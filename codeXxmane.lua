@@ -1,7 +1,3 @@
---Starter GUI
-local gui = script.Parent
-gui.ResetOnSpawn = false
-
 --[[
   manesNUKER — CodeX UI
   credit: stik claude gemini
@@ -46,6 +42,7 @@ end
 ------------------------
 local gui = Instance.new("ScreenGui", player.PlayerGui)
 gui.Name = "SimpleHub"
+gui.ResetOnSpawn = false
 
 local frame = Instance.new("Frame", gui)
 frame.Size             = UDim2.fromOffset(600, 400)
