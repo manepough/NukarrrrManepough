@@ -52,6 +52,63 @@ frame.BorderSizePixel  = 0
 Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 25)
 
 ------------------------
+-- TOGGLE BUTTON  (show/hide UI)
+------------------------
+local toggleBtn = Instance.new("TextButton", gui)
+toggleBtn.Size             = UDim2.fromOffset(60, 60)
+toggleBtn.Position         = UDim2.new(0, 20, 0.5, -30)
+toggleBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 50)
+toggleBtn.Text             = "M"
+toggleBtn.Font             = Enum.Font.GothamBold
+toggleBtn.TextSize         = 22
+toggleBtn.TextColor3       = Color3.fromRGB(11, 95, 226)
+toggleBtn.BorderSizePixel  = 0
+toggleBtn.ZIndex           = 10
+Instance.new("UICorner", toggleBtn).CornerRadius = UDim.new(1, 0)
+
+-- Stroke ring
+local toggleStroke = Instance.new("UIStroke", toggleBtn)
+toggleStroke.Color     = Color3.fromRGB(11, 95, 226)
+toggleStroke.Thickness = 2
+
+-- Draggable toggle button
+local tbDrag, tbDragStart, tbDragPos = false, nil, nil
+toggleBtn.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        tbDrag      = true
+        tbDragStart = input.Position
+        tbDragPos   = toggleBtn.Position
+    end
+end)
+UserInputService.InputChanged:Connect(function(input)
+    if tbDrag and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+        local delta = input.Position - tbDragStart
+        toggleBtn.Position = UDim2.new(tbDragPos.X.Scale, tbDragPos.X.Offset + delta.X, tbDragPos.Y.Scale, tbDragPos.Y.Offset + delta.Y)
+    end
+end)
+UserInputService.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        tbDrag = false
+    end
+end)
+
+-- Click to toggle visibility
+local uiVisible = true
+toggleBtn.MouseButton1Click:Connect(function()
+    uiVisible = not uiVisible
+    TweenService:Create(frame, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+        Size = uiVisible and UDim2.fromOffset(600, 400) or UDim2.fromOffset(0, 0),
+        BackgroundTransparency = uiVisible and 0 or 1
+    }):Play()
+    frame.Visible = uiVisible
+    toggleBtn.Text             = uiVisible and "M" or "M"
+    toggleBtn.BackgroundColor3 = uiVisible and Color3.fromRGB(30, 30, 50) or Color3.fromRGB(11, 70, 180)
+    TweenService:Create(toggleStroke, TweenInfo.new(0.2), {
+        Color = uiVisible and Color3.fromRGB(11, 95, 226) or Color3.fromRGB(200, 200, 255)
+    }):Play()
+end)
+
+------------------------
 -- LOADER  (CodeX original)
 ------------------------
 local loaderOverlay = Instance.new("Frame", frame)
@@ -964,7 +1021,7 @@ end, CW, 46)
 local credLbl = Instance.new("TextLabel", pgCredits)
 credLbl.Size                   = UDim2.fromOffset(CW, 300)
 credLbl.BackgroundTransparency = 1
-credLbl.Text                   = "credit to stik for ui\nand the nuker script"
+credLbl.Text                   = "credit to stik for ui\nand the nuker script\n\nand credits to kii akira\nfor the god mode code"
 credLbl.Font                   = Enum.Font.GothamBold
 credLbl.TextSize               = 22
 credLbl.TextColor3             = Color3.fromRGB(116, 113, 117)
