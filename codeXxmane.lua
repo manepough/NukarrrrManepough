@@ -18,6 +18,10 @@ if not whitelistedIDs[player.UserId] then
     return
 end
 
+--Starter GUI
+local gui = script.Parent
+gui.ResetOnSpawn = false
+
 ------------------------
 -- SERVICES
 ------------------------
