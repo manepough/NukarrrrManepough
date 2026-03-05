@@ -1,3 +1,7 @@
+--Starter GUI
+local gui = script.Parent
+gui.ResetOnSpawn = false
+
 --[[
   manesNUKER — CodeX UI
   credit: stik claude gemini
@@ -17,10 +21,6 @@ if not whitelistedIDs[player.UserId] then
     player:Kick("Unauthorized: not whitelisted.")
     return
 end
-
---Starter GUI
-local gui = script.Parent
-gui.ResetOnSpawn = false
 
 ------------------------
 -- SERVICES
