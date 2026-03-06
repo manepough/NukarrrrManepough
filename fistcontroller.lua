@@ -1,6 +1,6 @@
 -- ============================================================
--- BLOCK FIST v4
--- • Click a block to grab it (select specific anchored blocks)
+-- BLOCK FIST v5
+-- • Tap a PLAYER-PLACED brick (ignores map/baseplate)
 -- • Draw on canvas → blocks arrange into that shape in 3D
 -- • FE — everyone sees the block movement
 -- credit: stik
@@ -53,7 +53,28 @@ local function claimOwnership(brick)
 end
 
 -- ============================================================
--- RAYCAST — click a block in the world
+-- PLAYER BRICKS FOLDER — only grab from here
+-- ============================================================
+local function getPlayerBricksFolder()
+    local names = {"Bricks","Build","Placed","UserBricks","PlayerBricks","Blocks"}
+    for _, name in ipairs(names) do
+        local f = workspace:FindFirstChild(name)
+        if f then return f end
+    end
+    return nil
+end
+
+local function isPlayerBrick(part)
+    if not part then return false end
+    if not part:IsA("BasePart") then return false end
+    if part == workspace.Terrain then return false end
+    local folder = getPlayerBricksFolder()
+    if folder and part:IsDescendantOf(folder) then return true end
+    return false
+end
+
+-- ============================================================
+-- RAYCAST — click a player-placed block only
 -- ============================================================
 local function raycastBlock(screenPos)
     local unitRay = camera:ScreenPointToRay(screenPos.X, screenPos.Y)
@@ -69,7 +90,9 @@ local function raycastBlock(screenPos)
     local result = workspace:Raycast(unitRay.Origin, unitRay.Direction * 500, params)
     if result and result.Instance then
         local part = result.Instance
-        if part:IsA("BasePart") and part.Anchored and part ~= workspace.Terrain then
+        -- ONLY accept bricks inside the player bricks folder
+        -- Tapping the map, baseplate, terrain → ignored
+        if isPlayerBrick(part) then
             return part
         end
     end
