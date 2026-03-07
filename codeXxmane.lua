@@ -42,7 +42,7 @@ end
 ------------------------
 local gui = Instance.new("ScreenGui", player.PlayerGui)
 gui.Name = "SimpleHub"
-gui.ResetOnSpawn = false
+
 local frame = Instance.new("Frame", gui)
 frame.Size             = UDim2.fromOffset(600, 400)
 frame.Position         = UDim2.fromScale(0.5, 0.5)
@@ -704,9 +704,17 @@ local BP = "<font size='0'></font>"
 local function bypassText(str)
     if not str or str == "" then return "" end
     local result = ""
-    for i = 1, #str do
-        result = result .. str:sub(i, i)
-        if i < #str then result = result .. BP end
+    local i = 1
+    while i <= #str do
+        -- Pick random chunk size 1, 2, or 3 letters
+        local chunkSize = math.random(1, 3)
+        local chunk = str:sub(i, i + chunkSize - 1)
+        result = result .. chunk
+        i = i + chunkSize
+        -- Only add bypass tag if there are still letters left
+        if i <= #str then
+            result = result .. BP
+        end
     end
     return result
 end
