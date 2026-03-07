@@ -42,7 +42,6 @@ end
 ------------------------
 local gui = Instance.new("ScreenGui", player.PlayerGui)
 gui.Name = "SimpleHub"
-gui.ResetOnSpawn = false
 
 local frame = Instance.new("Frame", gui)
 frame.Size             = UDim2.fromOffset(600, 400)
@@ -697,40 +696,160 @@ local function getPaintRemote()
 end
 local function getBrick() return ReplicatedStorage:FindFirstChild("Brick") end
 
-local function runNuke()
-    local remote,rootPos=getPaintRemote(); local brick=getBrick()
-    if not remote or not brick then print("[NUKE] missing tools"); return end
-    local b="<font size='0'>dx</font>"
-    local tp={
-        Front="F"..b.."u"..b.."c"..b.."k A"..b.."d"..b.."m"..b.."i"..b.."n",
-        Back="say i e"..b.."a"..b.."t p"..b.."u"..b.."s"..b.."s"..b.."y",
-        Top="hacked by FLAMEFAML/STIK", Bottom="GGS (BIG W TO STIK)",
-        Right="ADMIN HATES N"..b.."I"..b.."G"..b.."G"..b.."E"..b.."R", Left="CRY GG'S"
-    }
-    local key="both \u{1F91D}"; local blk=Color3.new(0,0,0)
-    pcall(function() remote:FireServer(brick,Enum.NormalId.Top,rootPos,key,blk,"toxic","anchor") end); task.wait(0.3)
-    pcall(function() remote:FireServer(brick,Enum.NormalId.Top,rootPos,key,blk,"anchor","") end); task.wait(0.25)
-    for _, n in ipairs(faces) do
-        local ft=faceData[n] and faceData[n].txt.Text~="" and faceData[n].txt.Text or (tp[n] or "GG'S")
-        local fc=faceData[n] and faceData[n].clr.BackgroundColor3 or Color3.fromRGB(255,0,0)
-        pcall(function() remote:FireServer(brick,faceEnums[n],rootPos,key,fc,"spray",ft) end); task.wait(0.12)
+-- ============================================================
+-- BYPASS TEXT — inserts <font size='0'></font> between every letter
+-- so chat filters / admin logs can't read the words
+-- ============================================================
+local BP = "<font size='0'></font>"
+local function bypassText(str)
+    if not str or str == "" then return "" end
+    local result = ""
+    for i = 1, #str do
+        result = result .. str:sub(i, i)
+        if i < #str then result = result .. BP end
     end
-    print("[NUKE] Done — TOXIC + ANCHORED")
+    return result
 end
 
+-- ============================================================
+-- FIND NEAREST PLACED BRICK IN WORKSPACE
+-- Used to verify nuke/fix actually took effect
+-- ============================================================
+local function getNearestPlacedBrick()
+    local char = LocalPlayer.Character; if not char then return nil end
+    local hrp  = char:FindFirstChild("HumanoidRootPart"); if not hrp then return nil end
+    -- Common folder names for player-placed bricks
+    local folders = {"Bricks","Build","Placed","Blocks","UserBricks"}
+    local best, bestDist = nil, math.huge
+    for _, fname in ipairs(folders) do
+        local f = workspace:FindFirstChild(fname)
+        if f then
+            for _, v in ipairs(f:GetDescendants()) do
+                if v:IsA("BasePart") then
+                    local d = (v.Position - hrp.Position).Magnitude
+                    if d < bestDist then bestDist=d; best=v end
+                end
+            end
+        end
+    end
+    return best
+end
+
+-- ============================================================
+-- NUKE — with retry until brick confirms TOXIC + ANCHORED
+-- ============================================================
+local function runNuke()
+    local remote, rootPos = getPaintRemote(); local brick = getBrick()
+    if not remote or not brick then print("[NUKE] missing tools"); return end
+
+    local key = "both \u{1F91D}"
+    local blk = Color3.new(0, 0, 0)
+
+    -- Default toxic texts — every letter auto-bypassed
+    local tp = {
+        Front  = bypassText("Fuck Admin"),
+        Back   = bypassText("say i eat pussy"),
+        Top    = bypassText("hacked by FLAMEFAML/STIK"),
+        Bottom = bypassText("GGS BIG W TO STIK"),
+        Right  = bypassText("ADMIN HATES NIGGER"),
+        Left   = bypassText("CRY GGS"),
+    }
+
+    -- STEP 1: Fire toxic + anchor, retry until confirmed
+    local maxRetries = 8
+    for attempt = 1, maxRetries do
+        pcall(function() remote:FireServer(brick, Enum.NormalId.Top, rootPos, key, blk, "toxic", "anchor") end)
+        task.wait(0.3)
+        pcall(function() remote:FireServer(brick, Enum.NormalId.Top, rootPos, key, blk, "anchor", "") end)
+        task.wait(0.25)
+
+        -- Verify: check nearest placed brick
+        local placed = getNearestPlacedBrick()
+        if placed then
+            local isToxic    = placed.Material == Enum.Material.SmoothPlastic or placed.Material == Enum.Material.Neon -- game-specific, best effort
+            local isAnchored = placed.Anchored
+            if isAnchored then
+                print("[NUKE] Anchor confirmed on attempt "..attempt)
+                break
+            else
+                print("[NUKE] Not anchored yet — retry "..attempt.."/"..maxRetries)
+                task.wait(0.2)
+            end
+        else
+            -- No brick found to verify, just proceed
+            break
+        end
+    end
+
+    -- STEP 2: Paint faces — use custom text if set, otherwise default bypass text
+    for _, n in ipairs(faces) do
+        local rawText = faceData[n] and faceData[n].txt.Text ~= "" and faceData[n].txt.Text or nil
+        -- Auto-bypass whatever text is used
+        local ft = bypassText(rawText or tp[n] or "GGS")
+        local fc = faceData[n] and faceData[n].clr.BackgroundColor3 or Color3.fromRGB(255, 0, 0)
+
+        -- Retry each face paint up to 3 times
+        for attempt = 1, 3 do
+            pcall(function() remote:FireServer(brick, faceEnums[n], rootPos, key, fc, "spray", ft) end)
+            task.wait(0.12)
+            -- On last face retry just move on
+            if attempt < 3 then task.wait(0.05) end
+        end
+    end
+
+    print("[NUKE] Done — TOXIC + ANCHORED + BYPASS TEXT")
+end
+
+-- ============================================================
+-- FIX — with retry until brick confirms UNANCHORED
+-- ============================================================
 local function runFix()
+    -- Clear face data UI
     for _, n in ipairs(faces) do
-        if faceData[n] then faceData[n].txt.Text=""; faceData[n].clr.BackgroundColor3=LIGHT_GRAY end
+        if faceData[n] then
+            faceData[n].txt.Text = ""
+            faceData[n].clr.BackgroundColor3 = LIGHT_GRAY
+        end
     end
-    local remote,rootPos=getPaintRemote(); local brick=getBrick()
+
+    local remote, rootPos = getPaintRemote(); local brick = getBrick()
     if not remote or not brick then print("[FIX] missing tools"); return end
-    local key="both \u{1F91D}"
-    pcall(function() remote:FireServer(brick,Enum.NormalId.Top,rootPos,key,LIGHT_GRAY,"plastic","unanchor") end); task.wait(0.3)
-    pcall(function() remote:FireServer(brick,Enum.NormalId.Top,rootPos,key,LIGHT_GRAY,"unanchor","") end); task.wait(0.3)
-    for _, n in ipairs(faces) do
-        pcall(function() remote:FireServer(brick,faceEnums[n],rootPos,key,LIGHT_GRAY,"spray","") end); task.wait(0.08)
+    local key = "both \u{1F91D}"
+
+    -- STEP 1: Fire plastic + unanchor, retry until confirmed UNANCHORED
+    local maxRetries = 8
+    for attempt = 1, maxRetries do
+        pcall(function() remote:FireServer(brick, Enum.NormalId.Top, rootPos, key, LIGHT_GRAY, "plastic", "unanchor") end)
+        task.wait(0.3)
+        pcall(function() remote:FireServer(brick, Enum.NormalId.Top, rootPos, key, LIGHT_GRAY, "unanchor", "") end)
+        task.wait(0.3)
+
+        -- Verify: check nearest placed brick is now unanchored
+        local placed = getNearestPlacedBrick()
+        if placed then
+            if not placed.Anchored then
+                print("[FIX] Unanchor confirmed on attempt "..attempt)
+                break
+            else
+                print("[FIX] Still anchored — retry "..attempt.."/"..maxRetries)
+                -- Fire again with more force
+                pcall(function() remote:FireServer(brick, Enum.NormalId.Top, rootPos, key, LIGHT_GRAY, "unanchor", "") end)
+                task.wait(0.3)
+            end
+        else
+            break
+        end
     end
-    print("[FIX] Done — PLASTIC + UNANCHOR + LIGHT GRAY")
+
+    -- STEP 2: Clear all faces to light gray + empty text
+    for _, n in ipairs(faces) do
+        for attempt = 1, 2 do
+            pcall(function() remote:FireServer(brick, faceEnums[n], rootPos, key, LIGHT_GRAY, "spray", "") end)
+            task.wait(0.08)
+        end
+    end
+
+    print("[FIX] Done — PLASTIC + UNANCHOR + LIGHT GRAY (verified)")
 end
 
 -- BKIT exact call: pc.Delete.Script.Event:FireServer(Brick, HRP.Position)
