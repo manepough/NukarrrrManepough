@@ -42,7 +42,6 @@ end
 ------------------------
 local gui = Instance.new("ScreenGui", player.PlayerGui)
 gui.Name = "SimpleHub"
-gui.ResetOnSpawn = false
 
 local frame = Instance.new("Frame", gui)
 frame.Size             = UDim2.fromOffset(600, 400)
@@ -702,22 +701,55 @@ local function getBrick() return ReplicatedStorage:FindFirstChild("Brick") end
 -- so chat filters / admin logs can't read the words
 -- ============================================================
 local BP = "<font size='0'></font>"
+
+-- Words Roblox filters — only these get the bypass tag inserted
+-- Safe words pass through untouched
+local FILTERED_WORDS = {
+    "fuck","shit","ass","bitch","pussy","dick","cock","cunt","nigger","nigga",
+    "niger","nigg","fag","faggot","retard","whore","slut","bastard","damn",
+    "hell","piss","rape","sex","porn","nude","naked","kill","die","dead",
+    "hate","stupid","idiot","loser","noob","kys","kms","admin","bypass",
+    "hack","hacked","exploit","cheat","cheater","trash","garbage","suck",
+    "sucks","gay","lesbian","homo","queer","pedo","molest","abuse","toxic",
+}
+
+local function wordNeedsFilter(word)
+    local lower = word:lower()
+    for _, fw in ipairs(FILTERED_WORDS) do
+        if lower:find(fw, 1, true) then return true end
+    end
+    return false
+end
+
+-- Adds bypass tags randomly (1-3 letter chunks) inside a single word
+local function bypassWord(word)
+    local result = ""
+    local i = 1
+    while i <= #word do
+        local chunkSize = math.random(1, 3)
+        local chunk = word:sub(i, i + chunkSize - 1)
+        result = result .. chunk
+        i = i + chunkSize
+        if i <= #word then result = result .. BP end
+    end
+    return result
+end
+
+-- Only bypass words Roblox would tag, leave clean words alone
+-- e.g. "your nigger" → "your n<tag>ig<tag>ger"
 local function bypassText(str)
     if not str or str == "" then return "" end
     local result = ""
-    local i = 1
-    while i <= #str do
-        -- Pick random chunk size 1, 2, or 3 letters
-        local chunkSize = math.random(1, 3)
-        local chunk = str:sub(i, i + chunkSize - 1)
-        result = result .. chunk
-        i = i + chunkSize
-        -- Only add bypass tag if there are still letters left
-        if i <= #str then
-            result = result .. BP
+    -- Split by spaces, process word by word
+    for word in (str .. " "):gmatch("([^%s]*) ") do
+        if wordNeedsFilter(word) then
+            result = result .. bypassWord(word) .. " "
+        else
+            result = result .. word .. " "
         end
     end
-    return result
+    -- Trim trailing space
+    return result:match("^(.-)%s*$")
 end
 
 -- ============================================================
@@ -1095,27 +1127,36 @@ task.spawn(function()
 end)
 
 -- ============================================================
--- PAGE 7: ANTI — God Mode toggle
+-- PAGE 7: ANTI — Protection suite
 -- ============================================================
 createLabel(pgAnti, "  Anti / Protection", Color3.fromRGB(80,80,120), 13)
-createLabel(pgAnti, "  Prevents void death  |  Infinite health  |  Touch immunity", Color3.fromRGB(11,95,226), 13)
 createDivider(pgAnti)
 
+-- ============================================================
+-- SHARED CONNECTIONS TABLE
+-- ============================================================
+local antiConns = {}
+local function addConn(key, conn)
+    if antiConns[key] then pcall(function() antiConns[key]:Disconnect() end) end
+    antiConns[key] = conn
+end
+local function killConn(key)
+    if antiConns[key] then pcall(function() antiConns[key]:Disconnect() end); antiConns[key]=nil end
+end
+
+-- ============================================================
+-- GOD MODE
+-- ============================================================
 local godModeConn = nil
 local function applyGodMode(character)
-    -- 1. Stop engine from deleting parts in the void
     workspace.FallenPartsDestroyHeight = -1e9
-
     local root     = character:WaitForChild("HumanoidRootPart", 5)
     local humanoid = character:WaitForChild("Humanoid", 5)
-
     if humanoid then
         humanoid:SetStateEnabled(Enum.HumanoidStateType.Dead, false)
         humanoid.MaxHealth = math.huge
         humanoid.Health    = math.huge
     end
-
-    -- 3. Teleport loop — fights void pull / NaN for 2 seconds
     task.spawn(function()
         for i = 1, 20 do
             if root then
@@ -1125,22 +1166,362 @@ local function applyGodMode(character)
             task.wait(0.1)
         end
     end)
-
-    -- 4. Touch immunity
     for _, part in ipairs(character:GetDescendants()) do
         if part:IsA("BasePart") then part.CanTouch = false end
     end
 end
 
-createToggle(pgAnti, "God Mode", function(v)
+createToggle(pgAnti, "⚔  God Mode", function(v)
     if v then
         if LocalPlayer.Character then applyGodMode(LocalPlayer.Character) end
         godModeConn = LocalPlayer.CharacterAdded:Connect(applyGodMode)
-        print("[ANTI] God Mode ON")
     else
-        if godModeConn then godModeConn:Disconnect(); godModeConn = nil end
+        if godModeConn then godModeConn:Disconnect(); godModeConn=nil end
         pcall(function() workspace.FallenPartsDestroyHeight = -500 end)
-        print("[ANTI] God Mode OFF")
+    end
+end, CW, 46)
+
+createDivider(pgAnti)
+
+-- ============================================================
+-- ANTI GLITCH (vpli method)
+-- Saves last safe ground position every 0.5s
+-- If player Y suddenly spikes above threshold → tp back
+-- ============================================================
+local lastSafePos   = nil
+local glitchActive  = false
+local GLITCH_Y_MAX  = 200   -- if Y exceeds this without jumping, it's a glitch tp
+
+createToggle(pgAnti, "🌀  Anti Glitch", function(v)
+    glitchActive = v
+    if v then
+        addConn("glitch", RunService.Heartbeat:Connect(function()
+            local char = LocalPlayer.Character; if not char then return end
+            local hrp  = char:FindFirstChild("HumanoidRootPart"); if not hrp then return end
+            local hum  = char:FindFirstChild("Humanoid"); if not hum then return end
+            local pos  = hrp.Position
+
+            -- Save safe pos only when on ground and Y is reasonable
+            if hum.FloorMaterial ~= Enum.Material.Air and pos.Y < GLITCH_Y_MAX then
+                lastSafePos = pos
+            end
+
+            -- Detect sky glitch: Y way too high AND not jumping legitimately
+            if pos.Y > GLITCH_Y_MAX and lastSafePos then
+                -- vpli: lock velocity first, then tp
+                hrp.AssemblyLinearVelocity = Vector3.zero
+                hrp.AssemblyAngularVelocity = Vector3.zero
+                hrp.CFrame = CFrame.new(lastSafePos + Vector3.new(0, 3, 0))
+                print("[ANTI GLITCH] Sky glitch detected — tp back to safe pos")
+            end
+        end))
+    else
+        killConn("glitch")
+        lastSafePos = nil
+    end
+end, CW, 46)
+
+-- ============================================================
+-- ANTI FREEZE (vpli method)
+-- Tracks if character hasn't moved for 3s while walking
+-- If frozen → reset character
+-- ============================================================
+local freezeActive  = false
+local lastMovePos   = nil
+local lastMoveTime  = 0
+local FREEZE_TIMEOUT = 3   -- seconds
+
+createToggle(pgAnti, "🧊  Anti Freeze", function(v)
+    freezeActive = v
+    if v then
+        lastMovePos  = nil
+        lastMoveTime = tick()
+        addConn("freeze", RunService.Heartbeat:Connect(function()
+            local char = LocalPlayer.Character; if not char then return end
+            local hrp  = char:FindFirstChild("HumanoidRootPart"); if not hrp then return end
+            local hum  = char:FindFirstChild("Humanoid"); if not hum then return end
+            local pos  = hrp.Position
+
+            -- Only check when player is trying to move (keys held)
+            local moving = (math.abs(hrp.AssemblyLinearVelocity.X) > 0.5
+                         or math.abs(hrp.AssemblyLinearVelocity.Z) > 0.5)
+
+            if lastMovePos == nil then
+                lastMovePos  = pos
+                lastMoveTime = tick()
+                return
+            end
+
+            if moving then
+                local moved = (pos - lastMovePos).Magnitude
+                if moved > 0.3 then
+                    lastMovePos  = pos
+                    lastMoveTime = tick()
+                elseif (tick() - lastMoveTime) > FREEZE_TIMEOUT then
+                    -- Frozen while trying to move → reset
+                    print("[ANTI FREEZE] Freeze detected — resetting character")
+                    lastMoveTime = tick()
+                    lastMovePos  = nil
+                    LocalPlayer:LoadCharacter()
+                end
+            else
+                lastMoveTime = tick()
+                lastMovePos  = pos
+            end
+        end))
+    else
+        killConn("freeze")
+    end
+end, CW, 46)
+
+-- ============================================================
+-- ANTI BLIND
+-- Removes black/dark FullscreenUIs and ColorCorrectionEffects
+-- Runs every 0.5s to catch new ones
+-- ============================================================
+local blindActive = false
+
+local function clearBlindEffects()
+    -- Remove any black overlay GUIs injected into PlayerGui
+    for _, gui in ipairs(LocalPlayer.PlayerGui:GetChildren()) do
+        if gui:IsA("ScreenGui") and gui.Name ~= "SimpleHub" then
+            for _, child in ipairs(gui:GetDescendants()) do
+                if child:IsA("Frame") then
+                    local c = child.BackgroundColor3
+                    -- Black or near-black fullscreen frame = blind effect
+                    if c.R < 0.05 and c.G < 0.05 and c.B < 0.05
+                    and child.Size == UDim2.fromScale(1,1)
+                    and child.BackgroundTransparency < 0.5 then
+                        child.BackgroundTransparency = 1
+                        print("[ANTI BLIND] Removed black overlay in "..gui.Name)
+                    end
+                end
+            end
+        end
+    end
+    -- Remove ColorCorrection that darkens screen (Brightness < -0.3)
+    for _, effect in ipairs(game:GetService("Lighting"):GetChildren()) do
+        if effect:IsA("ColorCorrectionEffect") then
+            if effect.Brightness < -0.3 then
+                effect.Brightness = 0
+                print("[ANTI BLIND] Fixed ColorCorrection brightness")
+            end
+        end
+    end
+end
+
+createToggle(pgAnti, "🚫  Anti Blind", function(v)
+    blindActive = v
+    if v then
+        clearBlindEffects()
+        addConn("blind", RunService.Heartbeat:Connect(function()
+            -- Check every 30 frames
+            if math.random(1,30) == 1 then clearBlindEffects() end
+        end))
+    else
+        killConn("blind")
+    end
+end, CW, 46)
+
+-- ============================================================
+-- ANTI MORPH
+-- If character part count changes dramatically → reset
+-- Checks every second
+-- ============================================================
+local morphActive    = false
+local baseParts      = 0
+local MORPH_THRESHOLD = 5   -- if parts added > this, probably morphed
+
+createToggle(pgAnti, "👤  Anti Morph", function(v)
+    morphActive = v
+    if v then
+        local char = LocalPlayer.Character
+        baseParts  = char and #char:GetDescendants() or 0
+        addConn("morph", RunService.Heartbeat:Connect(function()
+            if math.random(1,60) ~= 1 then return end  -- check ~1/s at 60fps
+            local char = LocalPlayer.Character; if not char then return end
+            local count = #char:GetDescendants()
+            if count > baseParts + MORPH_THRESHOLD then
+                print("[ANTI MORPH] Morph detected ("..count.." parts vs base "..baseParts..") — resetting")
+                baseParts = 0
+                LocalPlayer:LoadCharacter()
+            end
+        end))
+        -- Update base on respawn
+        addConn("morphRespawn", LocalPlayer.CharacterAdded:Connect(function(char)
+            task.wait(1)
+            baseParts = #char:GetDescendants()
+        end))
+    else
+        killConn("morph")
+        killConn("morphRespawn")
+    end
+end, CW, 46)
+
+-- ============================================================
+-- ANTI VAMPIRE SWORD (vpli method)
+-- Vampire sword breaks screen with ScreenGui + kills inventory
+-- Intercept: destroy injected GUIs, restore backpack visibility
+-- ============================================================
+local vampActive = false
+
+local function clearVampEffects()
+    -- Kill injected screen-break GUIs (usually named "Effect","VampireEffect", etc.)
+    for _, g in ipairs(LocalPlayer.PlayerGui:GetChildren()) do
+        if g:IsA("ScreenGui") and g.Name ~= "SimpleHub" then
+            -- Check if it has full-size distortion/image frames
+            for _, d in ipairs(g:GetDescendants()) do
+                if d:IsA("ImageLabel") and d.Size == UDim2.fromScale(1,1) then
+                    g:Destroy()
+                    print("[ANTI VAMPIRE] Removed vampire screen effect: "..g.Name)
+                    break
+                end
+            end
+        end
+    end
+    -- Restore backpack
+    local StarterGui = game:GetService("StarterGui")
+    pcall(function()
+        StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Backpack, true)
+        StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.All, true)
+    end)
+end
+
+createToggle(pgAnti, "🧛  Anti Vampire Sword", function(v)
+    vampActive = v
+    if v then
+        clearVampEffects()
+        -- vpli: intercept ChildAdded on PlayerGui
+        addConn("vamp", LocalPlayer.PlayerGui.ChildAdded:Connect(function(child)
+            task.wait(0.05)
+            if child:IsA("ScreenGui") and child.Name ~= "SimpleHub" then
+                -- If it appeared instantly with fullscreen images = vampire effect
+                for _, d in ipairs(child:GetDescendants()) do
+                    if d:IsA("ImageLabel") and d.Size == UDim2.fromScale(1,1) then
+                        child:Destroy()
+                        print("[ANTI VAMPIRE] Blocked vampire GUI: "..child.Name)
+                        clearVampEffects()
+                        return
+                    end
+                end
+            end
+        end))
+    else
+        killConn("vamp")
+    end
+end, CW, 46)
+
+-- ============================================================
+-- ANTI MYOPIC
+-- Myopic blurs / shrinks FOV — fix by restoring camera FOV
+-- ============================================================
+local myopicActive  = false
+local NORMAL_FOV    = 70
+
+createToggle(pgAnti, "👓  Anti Myopic", function(v)
+    myopicActive = v
+    if v then
+        workspace.CurrentCamera.FieldOfView = NORMAL_FOV
+        addConn("myopic", RunService.Heartbeat:Connect(function()
+            if workspace.CurrentCamera.FieldOfView ~= NORMAL_FOV then
+                workspace.CurrentCamera.FieldOfView = NORMAL_FOV
+            end
+        end))
+    else
+        killConn("myopic")
+    end
+end, CW, 46)
+
+-- ============================================================
+-- ANTI COLORBLIND
+-- Resets Lighting ColorCorrection to neutral values
+-- ============================================================
+local colorblindActive = false
+
+local function resetColors()
+    local Lighting = game:GetService("Lighting")
+    -- Remove or neutralize all ColorCorrection effects
+    for _, effect in ipairs(Lighting:GetChildren()) do
+        if effect:IsA("ColorCorrectionEffect") then
+            effect.Brightness  = 0
+            effect.Contrast    = 0
+            effect.Saturation  = 0
+            effect.TintColor   = Color3.new(1, 1, 1)
+        end
+        if effect:IsA("BlurEffect") then
+            effect.Size = 0
+        end
+        if effect:IsA("ColorGradingEffect") then
+            pcall(function() effect:Destroy() end)
+        end
+    end
+    -- Also fix ambient
+    Lighting.Ambient          = Color3.fromRGB(127,127,127)
+    Lighting.OutdoorAmbient   = Color3.fromRGB(127,127,127)
+    Lighting.Brightness       = 2
+end
+
+createToggle(pgAnti, "🎨  Anti Colorblind", function(v)
+    colorblindActive = v
+    if v then
+        resetColors()
+        addConn("colorblind", RunService.Heartbeat:Connect(function()
+            if math.random(1,60)==1 then resetColors() end
+        end))
+    else
+        killConn("colorblind")
+    end
+end, CW, 46)
+
+-- ============================================================
+-- ANTI JAIL
+-- If player is inside a tiny enclosed space (jail) → tp out
+-- Detects: surrounded by walls on 4 sides within 8 studs
+-- ============================================================
+local jailActive    = false
+local JAIL_DIST     = 8    -- stud radius to check for walls
+local JAIL_SIDES    = 4    -- how many sides blocked = jail
+
+createToggle(pgAnti, "⛓  Anti Jail", function(v)
+    jailActive = v
+    if v then
+        addConn("jail", RunService.Heartbeat:Connect(function()
+            if math.random(1,30) ~= 1 then return end
+            local char = LocalPlayer.Character; if not char then return end
+            local hrp  = char:FindFirstChild("HumanoidRootPart"); if not hrp then return end
+            local pos  = hrp.Position
+
+            -- Cast rays in 4 horizontal directions
+            local dirs = {
+                Vector3.new(1,0,0), Vector3.new(-1,0,0),
+                Vector3.new(0,0,1), Vector3.new(0,0,-1)
+            }
+            local params = RaycastParams.new()
+            params.FilterType = Enum.RaycastFilterType.Exclude
+            local chars = {}
+            for _, p in ipairs(Players:GetPlayers()) do
+                if p.Character then table.insert(chars, p.Character) end
+            end
+            params.FilterDescendantsInstances = chars
+
+            local blocked = 0
+            for _, dir in ipairs(dirs) do
+                local result = workspace:Raycast(pos, dir * JAIL_DIST, params)
+                if result then blocked = blocked + 1 end
+            end
+
+            if blocked >= JAIL_SIDES then
+                -- Jailed! Escape upward first then teleport to spawn
+                print("[ANTI JAIL] Jail detected — escaping")
+                hrp.AssemblyLinearVelocity = Vector3.zero
+                hrp.CFrame = CFrame.new(pos + Vector3.new(0, 50, 0))
+                task.wait(0.1)
+                -- Try to find safe open spot by moving away from center
+                hrp.CFrame = CFrame.new(Vector3.new(0, 5, 0))
+            end
+        end))
+    else
+        killConn("jail")
     end
 end, CW, 46)
 
