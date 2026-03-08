@@ -951,16 +951,31 @@ for _, name in ipairs(faces) do
     bpBtn.BorderSizePixel  = 0
     bpBtn.AutoButtonColor  = false
     Instance.new("UICorner", bpBtn).CornerRadius = UDim.new(0, 6)
-    bpBtn.MouseButton1Click:Connect(function()
-        -- Insert the bypass tag at cursor position (or at end)
-        local cur = txt.CursorPosition
-        local t   = txt.Text
-        local tag = "<font size='0'></font>"
-        if cur > 0 and cur <= #t + 1 then
-            txt.Text = t:sub(1, cur-1) .. tag .. t:sub(cur)
-        else
-            txt.Text = t .. tag
+    -- Save cursor position whenever user is typing (before focus loss)
+    local savedCursor = -1
+    txt:GetPropertyChangedSignal("CursorPosition"):Connect(function()
+        if txt.CursorPosition > 0 then
+            savedCursor = txt.CursorPosition
         end
+    end)
+
+    bpBtn.MouseButton1Click:Connect(function()
+        local tag = "<font size='0'></font>"
+        local t   = txt.Text
+        -- Use saved cursor (clicking button loses focus so CursorPosition resets to -1)
+        local cur = savedCursor
+        local newText
+        if cur > 0 and cur <= #t + 1 then
+            newText = t:sub(1, cur-1) .. tag .. t:sub(cur)
+        else
+            -- No saved position — append to end
+            newText = t .. tag
+        end
+        txt.Text = newText
+        -- Restore cursor after the tag
+        local newPos = (cur > 0 and cur <= #t + 1) and (cur + #tag) or (#newText + 1)
+        txt.CursorPosition = newPos
+        savedCursor = newPos
         -- Flash green to confirm
         bpBtn.BackgroundColor3 = Color3.fromRGB(11, 95, 60)
         task.delay(0.3, function() bpBtn.BackgroundColor3 = Color3.fromRGB(60,20,120) end)
