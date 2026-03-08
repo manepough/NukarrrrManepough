@@ -1,0 +1,347 @@
+-- HOLLOW PURPLE GUI | Gojo Satoru Theme | No external dependencies
+local Plrs=game:GetService("Players")
+local TS=game:GetService("TweenService")
+local RS=game:GetService("RunService")
+local UIS=game:GetService("UserInputService")
+local LP=Plrs.LocalPlayer
+local PGui=LP:WaitForChild("PlayerGui")
+local FONT=Enum.Font.GothamBold
+local FONTR=Enum.Font.Gotham
+local T={
+    WinBG=Color3.fromRGB(10,4,22),WinBorder=Color3.fromRGB(120,40,220),
+    SideBG=Color3.fromRGB(6,2,16),Accent=Color3.fromRGB(190,80,255),
+    AccentS=Color3.fromRGB(140,60,210),White=Color3.fromRGB(240,225,255),
+    Dim=Color3.fromRGB(150,120,190),ElemBG=Color3.fromRGB(18,6,36),
+    ElemBorder=Color3.fromRGB(80,30,160),
+    TabText=Color3.fromRGB(230,200,255),TabDim=Color3.fromRGB(130,100,170),
+    TOn=Color3.fromRGB(160,60,255),TOff=Color3.fromRGB(40,15,70),
+    TKnob=Color3.fromRGB(230,200,255),
+    SFill=Color3.fromRGB(170,70,255),SBG=Color3.fromRGB(30,10,55),SKnob=Color3.fromRGB(210,160,255),
+    SecLine=Color3.fromRGB(80,30,140),SecText=Color3.fromRGB(180,130,255),
+}
+local function crn(r,p) local c=Instance.new("UICorner") c.CornerRadius=r c.Parent=p end
+local function stk(col,th,p) local s=Instance.new("UIStroke") s.Color=col s.Thickness=th s.ApplyStrokeMode=Enum.ApplyStrokeMode.Border s.Parent=p end
+local function tw(o,t,pr) TS:Create(o,TweenInfo.new(t,Enum.EasingStyle.Quart,Enum.EasingDirection.Out),pr):Play() end
+local function pad(l,r,t,b,p) local x=Instance.new("UIPadding") x.PaddingLeft=UDim.new(0,l) x.PaddingRight=UDim.new(0,r) x.PaddingTop=UDim.new(0,t) x.PaddingBottom=UDim.new(0,b) x.Parent=p end
+local C8=UDim.new(0,8) local C6=UDim.new(0,6) local C4=UDim.new(0,4) local C1=UDim.new(1,0)
+
+local function frm(sz,pos,col,tr,zi,par,anch)
+    local f=Instance.new("Frame") f.Size=sz f.Position=pos or UDim2.new(0,0,0,0) f.BackgroundColor3=col or Color3.new(0,0,0) f.BackgroundTransparency=tr or 0 f.BorderSizePixel=0 f.ZIndex=zi or 1 f.Parent=par if anch then f.AnchorPoint=anch end return f
+end
+local function lbl(sz,pos,txt,tcol,tr,fs,fo,xa,zi,par)
+    local l=Instance.new("TextLabel") l.Size=sz l.Position=pos or UDim2.new(0,0,0,0) l.BackgroundTransparency=1 l.Text=txt l.TextColor3=tcol l.TextTransparency=tr or 1 l.Font=fo or FONT l.TextSize=fs l.TextXAlignment=xa or Enum.TextXAlignment.Center l.ZIndex=zi or 10 l.Parent=par return l
+end
+local function snd(id,vol,pit,par)
+    local s=Instance.new("Sound") s.SoundId=id s.Volume=vol s.Pitch=pit s.Parent=par return s
+end
+
+-- INTRO (3 phases: Lapse Blue, Reversal Red, Hollow Purple)
+local function createIntro(cb)
+    local sg=Instance.new("ScreenGui") sg.Name="HPIntro" sg.IgnoreGuiInset=true sg.ResetOnSpawn=false sg.Parent=PGui
+    local bg=frm(UDim2.fromScale(1,1),nil,Color3.new(0,0,0),0,1,sg)
+    for i=1,50 do
+        local s=frm(UDim2.fromOffset(math.random(1,3),math.random(1,3)),UDim2.fromScale(math.random(0,100)/100,math.random(0,100)/100),Color3.fromRGB(200,180,255),math.random(30,85)/100,2,bg)
+        crn(C1,s)
+    end
+    local flash=frm(UDim2.fromScale(1,1),nil,Color3.fromRGB(180,80,255),1,25,sg)
+    local sc=snd("rbxasset://sounds/electronicpingshort.wav",0.55,0.65,sg)
+    local so=snd("rbxasset://sounds/electronicpingshort.wav",0.45,1.4,sg)
+    local sb=snd("rbxasset://sounds/Rocket shot.wav",0.9,0.5,sg)
+    local sw=snd("rbxasset://sounds/Rocket shot.wav",0.4,1.6,sg)
+    local function mkL(txt,col,sz,ysc,al,fo)
+        return lbl(UDim2.new(1,0,0,sz+8),UDim2.new(0,0,ysc,0),txt,col,al or 1,sz,fo or FONT,Enum.TextXAlignment.Center,10,sg)
+    end
+    local function mkO(px,col,gc,gc2)
+        local o=frm(UDim2.fromOffset(0,0),UDim2.new(px,0,0.5,0),col,0,5,sg,Vector2.new(0.5,0.5)) crn(C1,o)
+        local g=Instance.new("UIGradient") g.Color=gc g.Parent=o
+        local gw=frm(UDim2.fromOffset(0,0),UDim2.new(px,0,0.5,0),gc2 or col,0.6,4,sg,Vector2.new(0.5,0.5)) crn(C1,gw)
+        return o,gw
+    end
+    local function mkR(col,th)
+        local r=frm(UDim2.fromOffset(10,10),UDim2.new(0.5,0,0.5,0),Color3.new(0,0,0),1,7,sg,Vector2.new(0.5,0.5))
+        r.BorderColor3=col r.BorderSizePixel=th or 4 crn(C1,r) return r
+    end
+
+    -- PHASE 1: LAPSE BLUE
+    local bT=mkL("術式順転『蒼』",Color3.fromRGB(100,180,255),26,0.08)
+    local bS=mkL("LAPSE: BLUE  ·  Attraction of Infinity",Color3.fromRGB(160,210,255),13,0.16,1,FONTR)
+    local bD=mkL("Amplifies convergence of Infinity —\ncreating a gravitational singularity.",Color3.fromRGB(120,170,220),11,0.23,1,FONTR)
+    local bO,bG=mkO(0.5,Color3.fromRGB(60,140,255),ColorSequence.new({ColorSequenceKeypoint.new(0,Color3.fromRGB(200,230,255)),ColorSequenceKeypoint.new(1,Color3.fromRGB(10,40,200))}),Color3.fromRGB(80,160,255))
+    local bR=mkR(Color3.fromRGB(80,180,255),3)
+    task.wait(0.3) sc:Play() tw(bT,0.8,{TextTransparency=0}) task.wait(0.4) tw(bS,0.7,{TextTransparency=0}) task.wait(0.3) tw(bD,0.7,{TextTransparency=0.1})
+    task.wait(0.5) so:Play() tw(bO,0.8,{Size=UDim2.fromOffset(130,130)}) tw(bG,0.8,{Size=UDim2.fromOffset(200,200)})
+    task.spawn(function() for i=1,4 do tw(bO,0.18,{Size=UDim2.fromOffset(148,148)}) tw(bR,0.4,{Size=UDim2.fromOffset(240+i*25,240+i*25),BorderSizePixel=0}) task.wait(0.25) tw(bO,0.18,{Size=UDim2.fromOffset(130,130)}) bR.Size=UDim2.fromOffset(10,10) bR.BorderSizePixel=3 task.wait(0.25) end end)
+    task.wait(2.2) for _,v in pairs({bT,bS,bD}) do tw(v,0.5,{TextTransparency=1}) end tw(bO,0.5,{BackgroundTransparency=1,Size=UDim2.fromOffset(0,0)}) tw(bG,0.5,{BackgroundTransparency=1,Size=UDim2.fromOffset(0,0)}) task.wait(0.6)
+
+    -- PHASE 2: REVERSAL RED
+    local rT=mkL("術式反転『赫』",Color3.fromRGB(255,80,80),26,0.08)
+    local rS=mkL("REVERSAL: RED  ·  Divergence of Infinity",Color3.fromRGB(255,160,140),13,0.16,1,FONTR)
+    local rD=mkL("Reverses cursed energy output —\ngenerating a repulsive explosive force.",Color3.fromRGB(220,130,120),11,0.23,1,FONTR)
+    local rO,rG=mkO(0.5,Color3.fromRGB(255,60,60),ColorSequence.new({ColorSequenceKeypoint.new(0,Color3.fromRGB(255,210,190)),ColorSequenceKeypoint.new(1,Color3.fromRGB(160,10,10))}),Color3.fromRGB(255,100,80))
+    flash.BackgroundColor3=Color3.fromRGB(255,60,60)
+    tw(rT,0.8,{TextTransparency=0}) task.wait(0.4) tw(rS,0.7,{TextTransparency=0}) task.wait(0.3) tw(rD,0.7,{TextTransparency=0.1})
+    task.wait(0.5) so.Pitch=0.8 so:Play() tw(rO,0.8,{Size=UDim2.fromOffset(130,130)}) tw(rG,0.8,{Size=UDim2.fromOffset(200,200)})
+    task.spawn(function() for i=1,4 do local rr=mkR(Color3.fromRGB(255,80,60),3) tw(rr,0.8,{Size=UDim2.fromOffset(400+i*60,400+i*60),BorderSizePixel=0}) task.wait(0.35) end end)
+    task.wait(0.5) tw(flash,0.08,{BackgroundTransparency=0.3}) task.wait(0.1) tw(flash,0.6,{BackgroundTransparency=1}) task.wait(1.5)
+    for _,v in pairs({rT,rS,rD}) do tw(v,0.5,{TextTransparency=1}) end tw(rO,0.5,{BackgroundTransparency=1,Size=UDim2.fromOffset(0,0)}) tw(rG,0.5,{BackgroundTransparency=1,Size=UDim2.fromOffset(0,0)}) task.wait(0.6)
+
+    -- PHASE 3: HOLLOW PURPLE
+    flash.BackgroundColor3=Color3.fromRGB(180,60,255)
+    local gL=mkL("五条 悟  —  GOJO SATORU",Color3.fromRGB(210,185,255),15,0.06)
+    local pT=mkL("虚式『茈』",Color3.fromRGB(200,90,255),34,0.68)
+    local pS=mkL("HOLLOW PURPLE",Color3.fromRGB(180,120,255),22,0.78,1,FONTR)
+    local pD=mkL("Fusion of Blue and Red — an imaginary\nmass of infinite destructive power.",Color3.fromRGB(160,110,220),11,0.85,1,FONTR)
+    local bO2,bG2=mkO(0.28,Color3.fromRGB(60,140,255),ColorSequence.new({ColorSequenceKeypoint.new(0,Color3.fromRGB(180,220,255)),ColorSequenceKeypoint.new(1,Color3.fromRGB(20,80,220))}),Color3.fromRGB(80,160,255))
+    local rO2,rG2=mkO(0.72,Color3.fromRGB(255,60,60),ColorSequence.new({ColorSequenceKeypoint.new(0,Color3.fromRGB(255,200,180)),ColorSequenceKeypoint.new(1,Color3.fromRGB(180,10,10))}),Color3.fromRGB(255,100,80))
+    tw(gL,1,{TextTransparency=0}) task.wait(0.4)
+    so.Pitch=1.2 so:Play() tw(bO2,0.7,{Size=UDim2.fromOffset(110,110)}) tw(bG2,0.7,{Size=UDim2.fromOffset(170,170)}) task.wait(0.25)
+    so.Pitch=0.85 so:Play() tw(rO2,0.7,{Size=UDim2.fromOffset(110,110)}) tw(rG2,0.7,{Size=UDim2.fromOffset(170,170)}) task.wait(0.9)
+    for i=1,3 do tw(bO2,0.15,{Size=UDim2.fromOffset(126,126)}) tw(rO2,0.15,{Size=UDim2.fromOffset(126,126)}) task.wait(0.15) tw(bO2,0.15,{Size=UDim2.fromOffset(110,110)}) tw(rO2,0.15,{Size=UDim2.fromOffset(110,110)}) task.wait(0.15) end
+    task.wait(0.1) sw:Play()
+    local mi=TweenInfo.new(0.42,Enum.EasingStyle.Quart,Enum.EasingDirection.In)
+    for _,v in pairs({bO2,rO2}) do TS:Create(v,mi,{Position=UDim2.new(0.5,0,0.5,0),Size=UDim2.fromOffset(50,50)}):Play() end
+    for _,v in pairs({bG2,rG2}) do TS:Create(v,mi,{Position=UDim2.new(0.5,0,0.5,0),Size=UDim2.fromOffset(0,0),BackgroundTransparency=1}):Play() end
+    task.wait(0.44) sb:Play() bO2.Visible=false rO2.Visible=false
+    local purp=frm(UDim2.fromOffset(0,0),UDim2.new(0.5,0,0.5,0),Color3.fromRGB(150,40,255),0,6,sg,Vector2.new(0.5,0.5)) crn(C1,purp)
+    local pg=Instance.new("UIGradient") pg.Color=ColorSequence.new({ColorSequenceKeypoint.new(0,Color3.fromRGB(255,200,255)),ColorSequenceKeypoint.new(0.5,Color3.fromRGB(180,60,255)),ColorSequenceKeypoint.new(1,Color3.fromRGB(50,0,140))}) pg.Parent=purp
+    tw(purp,0.45,{Size=UDim2.fromOffset(200,200)})
+    tw(mkR(Color3.fromRGB(200,80,255),5),1.0,{Size=UDim2.fromOffset(900,900),BorderSizePixel=0})
+    tw(mkR(Color3.fromRGB(140,40,255),3),1.4,{Size=UDim2.fromOffset(1200,1200),BorderSizePixel=0})
+    tw(flash,0.08,{BackgroundTransparency=0.1}) task.wait(0.1) tw(flash,0.7,{BackgroundTransparency=1})
+    tw(pT,0.9,{TextTransparency=0}) task.wait(0.15) tw(pS,0.9,{TextTransparency=0}) task.wait(0.2) tw(pD,1,{TextTransparency=0.05})
+    task.spawn(function() for i=1,5 do tw(purp,0.25,{Size=UDim2.fromOffset(225,225)}) task.wait(0.25) tw(purp,0.25,{Size=UDim2.fromOffset(200,200)}) task.wait(0.25) end end)
+    task.wait(3.2)
+    for _,v in pairs({gL,pT,pS,pD}) do tw(v,0.7,{TextTransparency=1}) end
+    tw(purp,0.9,{BackgroundTransparency=1,Size=UDim2.fromOffset(0,0)}) tw(bg,1.2,{BackgroundTransparency=1})
+    task.wait(1.3) sg:Destroy() if cb then cb() end
+end
+
+-- VOID BACKGROUND
+local function buildVoid(par)
+    local void=frm(UDim2.fromScale(1,1),nil,Color3.fromRGB(4,0,14),0,1,par)
+    local vg=Instance.new("UIGradient") vg.Color=ColorSequence.new({ColorSequenceKeypoint.new(0,Color3.fromRGB(4,0,14)),ColorSequenceKeypoint.new(0.5,Color3.fromRGB(10,2,28)),ColorSequenceKeypoint.new(1,Color3.fromRGB(2,0,10))}) vg.Rotation=135 vg.Parent=void
+    local syms={"∞","∞","無","限","∞"}
+    for i=1,28 do
+        local l=lbl(UDim2.fromOffset(28,28),UDim2.fromScale(math.random(0,100)/100,math.random(0,100)/100),syms[math.random(#syms)],Color3.fromRGB(120,50,200),math.random(55,82)/100,math.random(12,22),FONT,Enum.TextXAlignment.Center,2,void)
+        task.spawn(function() while l.Parent do local d=math.random(6,14) tw(l,d,{Position=UDim2.fromScale(math.random(0,100)/100,math.random(0,100)/100),TextTransparency=math.random(50,85)/100}) task.wait(d) end end)
+    end
+    for i=1,10 do
+        local sz=math.random(4,14)
+        local o=frm(UDim2.fromOffset(sz,sz),UDim2.fromScale(math.random(0,100)/100,math.random(0,100)/100),(i%2==0) and Color3.fromRGB(80,160,255) or Color3.fromRGB(160,60,255),math.random(55,80)/100,3,void,Vector2.new(0.5,0.5)) crn(C1,o)
+        task.spawn(function() while o.Parent do local d=math.random(4,10) tw(o,d,{Position=UDim2.fromScale(math.random(0,100)/100,math.random(0,100)/100),BackgroundTransparency=math.random(50,80)/100}) task.wait(d) end end)
+    end
+    for i=1,5 do
+        local sz=i*120
+        local r=frm(UDim2.fromOffset(sz,sz),UDim2.new(0.5,0,0.5,0),Color3.new(0,0,0),1,2,void,Vector2.new(0.5,0.5))
+        r.BorderColor3=Color3.fromRGB(80,20,160) r.BorderSizePixel=1 crn(C1,r)
+        task.spawn(function() while r.Parent do tw(r,3+i*0.5,{Size=UDim2.fromOffset(sz+30,sz+30),BorderSizePixel=0}) task.wait(3+i*0.5) r.Size=UDim2.fromOffset(sz,sz) r.BorderSizePixel=1 end end)
+    end
+    return void
+end
+
+-- GUI LIBRARY
+local GUI={}
+function GUI:CreateWindow(cfg)
+    local W=setmetatable({},{__index=GUI}) W._tabs={} W._activeTab=nil
+    local sg=Instance.new("ScreenGui") sg.Name="HollowPurpleGUI" sg.ResetOnSpawn=false sg.IgnoreGuiInset=true
+    local ok=pcall(function() sg.Parent=game:GetService("CoreGui") end) if not ok then sg.Parent=PGui end
+    W._sg=sg
+    local voidBG=buildVoid(sg) voidBG.ZIndex=1 W._voidBG=voidBG
+    local cam=game:GetService("Workspace").CurrentCamera local vp=cam.ViewportSize
+    local mob=UIS.TouchEnabled
+    local wW=mob and math.clamp(math.floor(vp.X*0.88),260,440) or 600
+    local wH=mob and math.clamp(math.floor(vp.Y*0.84),320,560) or 460
+    local fullSz=UDim2.fromOffset(wW,wH) local sideW=mob and 110 or 150
+    W._isMob=mob W._fullSz=fullSz
+
+    local win=frm(fullSz,UDim2.fromOffset(math.floor((vp.X-wW)/2),math.floor((vp.Y-wH)/2)),T.WinBG,0.18,10,sg)
+    win.Active=true crn(C8,win) stk(T.WinBorder,1.5,win) W._win=win
+    local wg=Instance.new("UIGradient") wg.Color=ColorSequence.new({ColorSequenceKeypoint.new(0,Color3.fromRGB(25,8,50)),ColorSequenceKeypoint.new(0.5,Color3.fromRGB(10,3,22)),ColorSequenceKeypoint.new(1,Color3.fromRGB(4,1,12))}) wg.Rotation=135 wg.Parent=win
+
+    local tb=frm(UDim2.new(1,0,0,44),nil,Color3.fromRGB(8,2,18),0.1,12,win) crn(C8,tb)
+    frm(UDim2.new(1,0,0,10),UDim2.new(0,0,1,-10),Color3.fromRGB(8,2,18),0.1,12,tb)
+    local dot=frm(UDim2.fromOffset(8,8),UDim2.new(0,14,0.5,0),T.Accent,0,13,tb,Vector2.new(0,0.5)) crn(C1,dot)
+    lbl(UDim2.new(0.6,0,1,0),UDim2.new(0,30,0,0),cfg.Title or "Hollow Purple",T.White,0,15,FONT,Enum.TextXAlignment.Left,13,tb)
+    local subL=lbl(UDim2.new(1,0,1,0),UDim2.new(0,0,0,0),cfg.SubTitle or "",T.Dim,0,12,FONTR,Enum.TextXAlignment.Right,13,tb) pad(0,14,0,0,subL)
+
+    local function mkTBtn(txt,col,xo)
+        local b=Instance.new("TextButton") b.Size=UDim2.fromOffset(28,28) b.Position=UDim2.new(1,xo,0.5,0) b.AnchorPoint=Vector2.new(0,0.5) b.BackgroundColor3=col b.BackgroundTransparency=0.4 b.Text=txt b.TextColor3=T.White b.Font=FONT b.TextSize=13 b.BorderSizePixel=0 b.ZIndex=13 b.Parent=tb crn(C4,b) return b
+    end
+    mkTBtn("✕",Color3.fromRGB(160,30,80),-40).MouseButton1Click:Connect(function() tw(win,0.4,{Size=UDim2.fromOffset(0,0),BackgroundTransparency=1}) task.wait(0.45) sg:Destroy() end)
+
+    local orbSz=mob and 52 or 44
+    local fOrb=Instance.new("TextButton") fOrb.Size=UDim2.fromOffset(orbSz,orbSz) fOrb.Position=UDim2.fromOffset(math.floor(vp.X/2-orbSz/2),math.floor(vp.Y-orbSz-24)) fOrb.BackgroundColor3=Color3.fromRGB(80,10,180) fOrb.BackgroundTransparency=0.1 fOrb.Text="∞" fOrb.TextColor3=Color3.fromRGB(220,170,255) fOrb.Font=FONT fOrb.TextSize=mob and 26 or 22 fOrb.BorderSizePixel=0 fOrb.ZIndex=50 fOrb.Visible=false fOrb.Parent=sg crn(C1,fOrb) stk(T.Accent,2,fOrb)
+    local og=Instance.new("UIGradient") og.Color=ColorSequence.new({ColorSequenceKeypoint.new(0,Color3.fromRGB(200,120,255)),ColorSequenceKeypoint.new(0.5,Color3.fromRGB(120,30,255)),ColorSequenceKeypoint.new(1,Color3.fromRGB(60,0,160))}) og.Rotation=135 og.Parent=fOrb
+    local oRing=frm(UDim2.fromOffset(orbSz+16,orbSz+16),UDim2.fromOffset(fOrb.Position.X.Offset-8,fOrb.Position.Y.Offset-8),Color3.new(0,0,0),1,49,sg)
+    oRing.BorderColor3=Color3.fromRGB(160,60,255) oRing.BorderSizePixel=2 oRing.Visible=false crn(C1,oRing)
+
+    local pConn
+    local function startPulse() pConn=RS.Heartbeat:Connect(function() local t=tick() local p=(math.sin(t*3)+1)/2 oRing.BorderSizePixel=math.floor(1+p*3) oRing.BorderColor3=Color3.fromRGB(math.floor(120+p*100),math.floor(20+p*60),255) local by=vp.Y-orbSz-24 fOrb.Position=UDim2.fromOffset(fOrb.Position.X.Offset,math.floor(by+math.sin(t*2)*4)) oRing.Position=UDim2.fromOffset(fOrb.Position.X.Offset-8,fOrb.Position.Y.Offset-8) end) end
+    local function stopPulse() if pConn then pConn:Disconnect() pConn=nil end end
+
+    local oDr,oMv,oDSX,oDSY,oWSX,oWSY=false,false,0,0,0,0
+    fOrb.InputBegan:Connect(function(i) if i.UserInputType==Enum.UserInputType.MouseButton1 or i.UserInputType==Enum.UserInputType.Touch then oDr=true oMv=false oDSX=i.Position.X oDSY=i.Position.Y oWSX=fOrb.Position.X.Offset oWSY=fOrb.Position.Y.Offset end end)
+    fOrb.InputChanged:Connect(function(i) if not oDr then return end if i.UserInputType~=Enum.UserInputType.MouseMovement and i.UserInputType~=Enum.UserInputType.Touch then return end local dx=i.Position.X-oDSX local dy=i.Position.Y-oDSY if math.abs(dx)>6 or math.abs(dy)>6 then oMv=true end if oMv then fOrb.Position=UDim2.fromOffset(math.clamp(oWSX+dx,0,vp.X-orbSz),math.clamp(oWSY+dy,0,vp.Y-orbSz)) oRing.Position=UDim2.fromOffset(fOrb.Position.X.Offset-8,fOrb.Position.Y.Offset-8) end end)
+    fOrb.InputEnded:Connect(function(i) if i.UserInputType==Enum.UserInputType.MouseButton1 or i.UserInputType==Enum.UserInputType.Touch then if not oMv then stopPulse() tw(oRing,0.35,{Size=UDim2.fromOffset(orbSz+70,orbSz+70)}) task.wait(0.06) fOrb.Visible=false oRing.Visible=false voidBG.Visible=true win.Size=UDim2.fromOffset(0,0) win.BackgroundTransparency=0.18 win.Visible=true tw(win,0.4,{Size=fullSz}) task.wait(0.45) oRing.Size=UDim2.fromOffset(orbSz+16,orbSz+16) end oDr=false oMv=false end end)
+
+    local minBtn=mkTBtn("—",Color3.fromRGB(80,30,160),-74)
+    local minimized=false
+    minBtn.MouseButton1Click:Connect(function()
+        if minimized then return end minimized=true voidBG.Visible=false
+        tw(win,0.35,{Size=UDim2.fromOffset(0,0),BackgroundTransparency=1}) task.wait(0.38) win.Visible=false
+        fOrb.Position=UDim2.fromOffset(math.floor(vp.X/2-orbSz/2),math.floor(vp.Y-orbSz-24)) oRing.Position=UDim2.fromOffset(fOrb.Position.X.Offset-8,fOrb.Position.Y.Offset-8)
+        fOrb.Visible=true oRing.Visible=true fOrb.Size=UDim2.fromOffset(0,0)
+        tw(fOrb,0.4,{Size=UDim2.fromOffset(orbSz,orbSz)}) tw(oRing,0.4,{Size=UDim2.fromOffset(orbSz+16,orbSz+16)})
+        task.wait(0.42) minimized=false startPulse()
+    end)
+
+    local dr,dSX,dSY,wSX,wSY=false,0,0,0,0
+    tb.InputBegan:Connect(function(i) if i.UserInputType==Enum.UserInputType.MouseButton1 or i.UserInputType==Enum.UserInputType.Touch then dr=true dSX=i.Position.X dSY=i.Position.Y wSX=win.Position.X.Offset wSY=win.Position.Y.Offset end end)
+    tb.InputChanged:Connect(function(i) if not dr then return end if i.UserInputType~=Enum.UserInputType.MouseMovement and i.UserInputType~=Enum.UserInputType.Touch then return end win.Position=UDim2.fromOffset(math.clamp(wSX+(i.Position.X-dSX),0,vp.X-win.AbsoluteSize.X),math.clamp(wSY+(i.Position.Y-dSY),0,vp.Y-win.AbsoluteSize.Y)) end)
+    tb.InputEnded:Connect(function(i) if i.UserInputType==Enum.UserInputType.MouseButton1 or i.UserInputType==Enum.UserInputType.Touch then dr=false end end)
+
+    local side=Instance.new("ScrollingFrame") side.Size=UDim2.new(0,sideW,1,-44) side.Position=UDim2.new(0,0,0,44) side.BackgroundColor3=T.SideBG side.BackgroundTransparency=0.12 side.BorderSizePixel=0 side.ZIndex=11 side.ScrollBarThickness=0 side.ScrollingDirection=Enum.ScrollingDirection.Y side.CanvasSize=UDim2.new(0,0,0,0) side.AutomaticCanvasSize=Enum.AutomaticSize.Y side.ElasticBehavior=Enum.ElasticBehavior.Always side.Parent=win
+    frm(UDim2.new(0,1,1,0),UDim2.new(1,-1,0,0),Color3.fromRGB(90,20,180),0.5,12,side)
+    local tList=frm(UDim2.new(1,0,0,0),nil,Color3.new(0,0,0),1,12,side) tList.AutomaticSize=Enum.AutomaticSize.Y
+    local tLL=Instance.new("UIListLayout") tLL.Padding=UDim.new(0,4) tLL.SortOrder=Enum.SortOrder.LayoutOrder tLL.Parent=tList pad(8,8,10,10,tList) W._tabList=tList
+
+    local cont=Instance.new("ScrollingFrame") cont.Size=UDim2.new(1,-sideW,1,-44) cont.Position=UDim2.new(0,sideW,0,44) cont.BackgroundTransparency=1 cont.BorderSizePixel=0 cont.ScrollBarThickness=3 cont.ScrollBarImageColor3=T.Accent cont.ZIndex=11 cont.CanvasSize=UDim2.new(0,0,0,0) cont.AutomaticCanvasSize=Enum.AutomaticSize.Y cont.Parent=win
+    local cLL=Instance.new("UIListLayout") cLL.SortOrder=Enum.SortOrder.LayoutOrder cLL.Parent=cont pad(14,14,12,12,cont) W._content=cont
+
+    local nH=frm(UDim2.new(0,math.min(280,wW-20),1,0),UDim2.new(1,-(math.min(280,wW-20)+10),0,0),Color3.new(0,0,0),1,30,sg)
+    local nLL=Instance.new("UIListLayout") nLL.VerticalAlignment=Enum.VerticalAlignment.Bottom nLL.Padding=UDim.new(0,8) nLL.Parent=nH pad(0,0,0,16,nH) W._notifH=nH
+    local bell=snd("rbxasset://sounds/electronicpingshort.wav",0.25,1.8,sg) W._bell=bell
+    win.Size=UDim2.fromOffset(0,0) tw(win,0.5,{Size=fullSz})
+    return W
+end
+
+function GUI:Notify(cfg)
+    local n=frm(UDim2.new(1,0,0,0),nil,Color3.fromRGB(12,4,26),0.1,31,self._notifH) n.AutomaticSize=Enum.AutomaticSize.Y crn(C6,n) stk(T.Accent,1,n)
+    frm(UDim2.new(0,3,1,0),nil,T.Accent,0,32,n)
+    local inn=frm(UDim2.new(1,-12,1,0),UDim2.new(0,10,0,0),Color3.new(0,0,0),1,32,n) inn.AutomaticSize=Enum.AutomaticSize.Y pad(0,8,10,10,inn)
+    lbl(UDim2.new(1,0,0,20),UDim2.new(0,0,0,0),cfg.Title or "",T.White,0,13,FONT,Enum.TextXAlignment.Left,33,inn)
+    local cl=lbl(UDim2.new(1,0,0,0),UDim2.new(0,0,0,22),cfg.Content or "",T.Dim,0,12,FONTR,Enum.TextXAlignment.Left,33,inn) cl.AutomaticSize=Enum.AutomaticSize.Y cl.TextWrapped=true
+    task.delay(cfg.Duration or 3,function() tw(n,0.4,{BackgroundTransparency=1}) task.wait(0.4) n:Destroy() end)
+end
+
+function GUI:Category(name)
+    local cat=frm(UDim2.new(1,0,0,22),nil,Color3.new(0,0,0),1,12,self._tabList) cat.LayoutOrder=#self._tabs+1
+    frm(UDim2.new(0,3,0,12),UDim2.new(0,0,0.5,0),T.Accent,0.3,13,cat,Vector2.new(0,0.5))
+    lbl(UDim2.new(1,-10,1,0),UDim2.new(0,9,0,0),string.upper(name or ""),T.Accent,0,9,FONT,Enum.TextXAlignment.Left,13,cat)
+    table.insert(self._tabs,{_isCat=true})
+end
+
+function GUI:Tab(cfg)
+    local O={} O._elems={} O._gui=self
+    local mob=self._isMob local tabH=mob and 42 or 36
+    local btn=Instance.new("TextButton") btn.Size=UDim2.new(1,0,0,tabH) btn.BackgroundColor3=T.TabDim btn.BackgroundTransparency=1 btn.Text="" btn.BorderSizePixel=0 btn.ZIndex=13 btn.LayoutOrder=#self._tabs+1 btn.Parent=self._tabList crn(C6,btn)
+    local bL=lbl(UDim2.new(1,-12,1,0),UDim2.new(0,12,0,0),cfg.Title or "Tab",T.TabDim,0,13,FONTR,Enum.TextXAlignment.Left,14,btn)
+    local aB=frm(UDim2.fromOffset(3,0),UDim2.new(0,0,0.5,0),T.Accent,0,15,btn,Vector2.new(0,0.5)) crn(UDim.new(0,2),aB)
+    local page=frm(UDim2.new(1,0,0,0),nil,Color3.new(0,0,0),1,11,self._content) page.AutomaticSize=Enum.AutomaticSize.Y page.Visible=false page.Name=cfg.Title or "Tab"
+    local pL=Instance.new("UIListLayout") pL.Padding=UDim.new(0,8) pL.SortOrder=Enum.SortOrder.LayoutOrder pL.Parent=page
+    O._btn=btn O._bL=bL O._aB=aB O._page=page
+
+    local function activate()
+        if self._activeTab then tw(self._activeTab._btn,0.2,{BackgroundTransparency=1}) tw(self._activeTab._aB,0.2,{Size=UDim2.fromOffset(3,0)}) self._activeTab._bL.TextColor3=T.TabDim self._activeTab._bL.Font=FONTR self._activeTab._page.Visible=false end
+        self._activeTab=O tw(btn,0.2,{BackgroundTransparency=0.55}) tw(aB,0.2,{Size=UDim2.fromOffset(3,24)}) bL.TextColor3=T.TabText bL.Font=FONT page.Visible=true
+    end
+    btn.MouseButton1Click:Connect(activate)
+    btn.MouseEnter:Connect(function() if self._activeTab~=O then tw(btn,0.15,{BackgroundTransparency=0.75}) end end)
+    btn.MouseLeave:Connect(function() if self._activeTab~=O then tw(btn,0.15,{BackgroundTransparency=1}) end end)
+    table.insert(self._tabs,O)
+    local realTabs=0 for _,t in pairs(self._tabs) do if not t._isCat then realTabs=realTabs+1 end end
+    if realTabs==1 then activate() end
+
+    local eH=mob and 64 or 54
+    local function mkE(h) local f=frm(UDim2.new(1,0,0,h or eH),nil,T.ElemBG,0.25,12,page) f.LayoutOrder=#O._elems+1 crn(C6,f) stk(T.ElemBorder,0.8,f) f.MouseEnter:Connect(function() tw(f,0.15,{BackgroundTransparency=0.1}) end) f.MouseLeave:Connect(function() tw(f,0.15,{BackgroundTransparency=0.25}) end) table.insert(O._elems,f) return f end
+    local tSz=mob and 14 or 13 local dSz=mob and 12 or 11
+    local function addT(p,t,d) lbl(UDim2.new(1,-18,0,20),UDim2.new(0,14,0,10),t or "",T.White,0,tSz,FONT,Enum.TextXAlignment.Left,13,p) if d and d~="" then lbl(UDim2.new(1,-18,0,16),UDim2.new(0,14,0,28),d,T.Dim,0,dSz,FONTR,Enum.TextXAlignment.Left,13,p) end end
+
+    function O:Section(c2) local s=frm(UDim2.new(1,0,0,26),nil,Color3.new(0,0,0),1,12,page) s.LayoutOrder=#O._elems+1 table.insert(O._elems,s) local ln=frm(UDim2.new(1,0,0,1),UDim2.new(0,0,0.5,0),T.SecLine,0.4,13,s) lbl(UDim2.new(0,0,1,0),nil,"  "..(c2.Title or "").."  ",T.SecText,0,11,FONT,Enum.TextXAlignment.Left,14,s).AutomaticSize=Enum.AutomaticSize.X return O end
+
+    local bW=mob and 80 or 70 local bH2=mob and 34 or 26
+    function O:Button(c2) local f=mkE() addT(f,c2.Title,c2.Description) local b=Instance.new("TextButton") b.Size=UDim2.fromOffset(bW,bH2) b.Position=UDim2.new(1,-(bW+14),0.5,0) b.AnchorPoint=Vector2.new(0,0.5) b.BackgroundColor3=T.AccentS b.BackgroundTransparency=0.2 b.Text="Run" b.TextColor3=T.White b.Font=FONT b.TextSize=mob and 13 or 12 b.BorderSizePixel=0 b.ZIndex=14 b.Parent=f crn(C4,b) stk(T.Accent,0.8,b) b.MouseButton1Click:Connect(function() O._gui._bell:Play() tw(b,0.08,{BackgroundTransparency=0}) task.wait(0.12) tw(b,0.15,{BackgroundTransparency=0.2}) if c2.Callback then c2.Callback() end end) b.MouseEnter:Connect(function() tw(b,0.12,{BackgroundTransparency=0.05}) end) b.MouseLeave:Connect(function() tw(b,0.12,{BackgroundTransparency=0.2}) end) return O end
+
+    function O:Toggle(c2) local val=c2.Default or false local f=mkE() addT(f,c2.Title,c2.Description) local tW=mob and 52 or 44 local tH2=mob and 28 or 24 local kSz=mob and 22 or 18 local track=frm(UDim2.fromOffset(tW,tH2),UDim2.new(1,-(tW+14),0.5,0),val and T.TOn or T.TOff,0,14,f,Vector2.new(0,0.5)) crn(C1,track) local knob=frm(UDim2.fromOffset(kSz,kSz),val and UDim2.new(1,-(kSz+3),0.5,0) or UDim2.new(0,3,0.5,0),T.TKnob,0,15,track,Vector2.new(0,0.5)) crn(C1,knob) local ca=Instance.new("TextButton") ca.Size=UDim2.fromScale(1,1) ca.BackgroundTransparency=1 ca.Text="" ca.ZIndex=16 ca.Parent=f ca.MouseButton1Click:Connect(function() val=not val tw(track,0.2,{BackgroundColor3=val and T.TOn or T.TOff}) knob.Position=val and UDim2.new(1,-(kSz+3),0.5,0) or UDim2.new(0,3,0.5,0) if c2.Callback then c2.Callback(val) end end) return O end
+
+    function O:Slider(c2) local mn,mx,val=c2.Min or 0,c2.Max or 100,c2.Default or c2.Min or 0 local sEH=mob and 78 or 68 local f=mkE(sEH) addT(f,c2.Title,c2.Description) local vL=lbl(UDim2.fromOffset(50,20),UDim2.new(1,-64,0,10),tostring(math.floor(val)),T.Accent,0,12,FONT,Enum.TextXAlignment.Right,14,f) local tH3=mob and 10 or 6 local kSz2=mob and 20 or 14 local track=frm(UDim2.new(1,-28,0,tH3),UDim2.new(0,14,1,-22),T.SBG,0,14,f) crn(C1,track) local fill=frm(UDim2.new((val-mn)/(mx-mn),0,1,0),nil,T.SFill,0,15,track) crn(C1,fill) local fg=Instance.new("UIGradient") fg.Color=ColorSequence.new({ColorSequenceKeypoint.new(0,Color3.fromRGB(120,50,220)),ColorSequenceKeypoint.new(1,Color3.fromRGB(200,100,255))}) fg.Parent=fill local knob=frm(UDim2.fromOffset(kSz2,kSz2),UDim2.new((val-mn)/(mx-mn),0,0.5,0),T.SKnob,0,16,track,Vector2.new(0.5,0.5)) crn(C1,knob) stk(T.Accent,1,knob) local dr=false local function upd(i) local r=math.clamp((i.Position.X-track.AbsolutePosition.X)/track.AbsoluteSize.X,0,1) val=math.floor(mn+(mx-mn)*r) fill.Size=UDim2.new(r,0,1,0) knob.Position=UDim2.new(r,0,0.5,0) vL.Text=tostring(val) if c2.Callback then c2.Callback(val) end end track.InputBegan:Connect(function(i) if i.UserInputType==Enum.UserInputType.MouseButton1 or i.UserInputType==Enum.UserInputType.Touch then dr=true upd(i) end end) track.InputChanged:Connect(function(i) if dr and (i.UserInputType==Enum.UserInputType.MouseMovement or i.UserInputType==Enum.UserInputType.Touch) then upd(i) end end) UIS.InputEnded:Connect(function(i) if i.UserInputType==Enum.UserInputType.MouseButton1 or i.UserInputType==Enum.UserInputType.Touch then dr=false end end) return O end
+
+    function O:Dropdown(c2) local val=c2.Default or (c2.Values and c2.Values[1]) or "" local open=false local f=mkE() addT(f,c2.Title,c2.Description) local db=Instance.new("TextButton") db.Size=UDim2.fromOffset(130,28) db.Position=UDim2.new(1,-144,0.5,0) db.AnchorPoint=Vector2.new(0,0.5) db.BackgroundColor3=T.ElemBG db.Text=val.."  ▾" db.TextColor3=T.White db.Font=FONTR db.TextSize=12 db.BorderSizePixel=0 db.ZIndex=15 db.Parent=f crn(C4,db) stk(T.AccentS,1,db) local menu=frm(UDim2.fromOffset(130,0),UDim2.new(1,-144,1,4),Color3.fromRGB(12,4,26),0.05,20,f) menu.Visible=false menu.ClipsDescendants=true crn(C4,menu) stk(T.Accent,1,menu) local ml=Instance.new("UIListLayout") ml.Parent=menu pad(4,4,4,4,menu) for _,opt in ipairs(c2.Values or {}) do local ob=Instance.new("TextButton") ob.Size=UDim2.new(1,0,0,26) ob.BackgroundTransparency=1 ob.Text=opt ob.TextColor3=T.TabDim ob.Font=FONTR ob.TextSize=12 ob.BorderSizePixel=0 ob.ZIndex=21 ob.Parent=menu crn(C4,ob) ob.MouseEnter:Connect(function() tw(ob,0.12,{BackgroundTransparency=0.7}) ob.TextColor3=T.White end) ob.MouseLeave:Connect(function() tw(ob,0.12,{BackgroundTransparency=1}) ob.TextColor3=T.TabDim end) ob.MouseButton1Click:Connect(function() val=opt db.Text=opt.."  ▾" open=false tw(menu,0.15,{Size=UDim2.fromOffset(130,0)}) task.wait(0.16) menu.Visible=false if c2.Callback then c2.Callback(opt) end end) end db.MouseButton1Click:Connect(function() open=not open menu.Visible=open tw(menu,0.2,{Size=UDim2.fromOffset(130,open and (#(c2.Values or {})*30+8) or 0)}) end) return O end
+
+    return O
+end
+
+-- BOOT
+createIntro(function()
+    local W=GUI:CreateWindow({Title="Hollow Purple",SubTitle="五条 悟",Size=UDim2.fromOffset(580,460)})
+    W:Notify({Title="虚式『茈』",Content="Hollow Purple loaded. The Honored One is here.",Duration=5})
+    W:Category("Universal")
+    local Main=W:Tab({Title="Main"}) local Player=W:Tab({Title="Player"}) local Aim=W:Tab({Title="Aimbot"}) local Cfg=W:Tab({Title="Settings"})
+    W:Category("Games")
+    local TCO=W:Tab({Title="The Chosen One"})
+
+    -- MAIN
+    Main:Section({Title="Cursed Techniques"})
+    Main:Button({Title="Hollow Purple",Description="Activate the strongest technique",Callback=function() W:Notify({Title="虚式『茈』",Content="Hollow Purple — Activated!",Duration=3}) end})
+    Main:Toggle({Title="Infinity (Auto Block)",Description="Passive barrier",Default=false,Callback=function(v) print("Infinity:",v) end})
+    Main:Toggle({Title="Blue (Attraction)",Description="Draw enemies toward you",Default=false,Callback=function(v) print("Blue:",v) end})
+    Main:Section({Title="Universal"})
+    Main:Button({Title="Totem of Undying",Description="Prevents death once",Callback=function() W:Notify({Title="Totem",Content="Loading...",Duration=3}) local ok,e=pcall(function() loadstring(game:HttpGet("https://pastebin.com/raw/RFafUFkA"))() end) if not ok then W:Notify({Title="Error",Content=tostring(e),Duration=5}) end end})
+    Main:Section({Title="Parts"})
+    Main:Button({Title="Better Parts Controller",Description="Enhanced part control utilities",Callback=function() W:Notify({Title="Parts",Content="Loading Better Parts Controller...",Duration=3}) local ok,e=pcall(function() loadstring(game:HttpGet("https://rawscripts.net/raw/Universal-Script-Better-Part-controller-57507"))() end) if not ok then W:Notify({Title="Error",Content=tostring(e),Duration=5}) end end})
+
+    -- PLAYER
+    Player:Section({Title="Movement"})
+    Player:Slider({Title="Walk Speed",Min=16,Max=300,Default=16,Callback=function(v) if LP.Character and LP.Character:FindFirstChild("Humanoid") then LP.Character.Humanoid.WalkSpeed=v end end})
+    Player:Slider({Title="Jump Power",Min=50,Max=500,Default=50,Callback=function(v) if LP.Character and LP.Character:FindFirstChild("Humanoid") then LP.Character.Humanoid.JumpPower=v end end})
+    Player:Toggle({Title="Noclip",Default=false,Callback=function(v) RS.Stepped:Connect(function() if v and LP.Character then for _,p in pairs(LP.Character:GetDescendants()) do if p:IsA("BasePart") then p.CanCollide=false end end end end) end})
+    Player:Section({Title="ESP"})
+    local espOn=false local espB={}
+    local function clearESP() for _,v in pairs(espB) do if v and v.Parent then v:Destroy() end end espB={} end
+    local function updateESP() clearESP() if not espOn then return end for _,p in pairs(Plrs:GetPlayers()) do if p~=LP and p.Character then local hrp=p.Character:FindFirstChild("HumanoidRootPart") if hrp then local bb=Instance.new("BillboardGui") bb.Size=UDim2.fromOffset(120,40) bb.StudsOffset=Vector3.new(0,3,0) bb.AlwaysOnTop=true bb.Parent=hrp lbl(UDim2.fromScale(1,1),nil,p.Name,Color3.fromRGB(200,100,255),0,14,FONT,Enum.TextXAlignment.Center,1,bb) local sel=Instance.new("SelectionBox") sel.Adornee=p.Character sel.Color3=Color3.fromRGB(160,60,255) sel.LineThickness=0.06 sel.SurfaceTransparency=0.85 sel.SurfaceColor3=Color3.fromRGB(100,30,200) sel.Parent=game:GetService("CoreGui") table.insert(espB,bb) table.insert(espB,sel) end end end end
+    Player:Toggle({Title="ESP",Description="Player highlight + names",Default=false,Callback=function(v) espOn=v if v then updateESP() task.spawn(function() while espOn do updateESP() task.wait(3) end end) else clearESP() end end})
+    Player:Section({Title="Teleport"})
+    local tpT
+    Player:Toggle({Title="Teleport Tool",Description="Equip then click to teleport",Default=false,Callback=function(v) if v then tpT=Instance.new("Tool") tpT.Name="Teleport" tpT.RequiresHandle=false tpT.Parent=LP.Backpack tpT.Activated:Connect(function() local cam=game:GetService("Workspace").CurrentCamera local cv=cam.ViewportSize/2 local ray=cam:ScreenPointToRay(cv.X,cv.Y) local res=game:GetService("Workspace"):Raycast(ray.Origin,ray.Direction*1000) if res and LP.Character and LP.Character:FindFirstChild("HumanoidRootPart") then LP.Character.HumanoidRootPart.CFrame=CFrame.new(res.Position+Vector3.new(0,3,0)) end end) W:Notify({Title="Teleport",Content="Tool added to backpack!",Duration=3}) else if tpT then tpT:Destroy() tpT=nil end end end})
+
+    -- AIMBOT
+    local abOn,silOn,invOn,abFOV,abSmooth=false,false,false,200,0.2
+    local function getNear() local cam=game:GetService("Workspace").CurrentCamera local vp2=cam.ViewportSize local ctr=Vector2.new(vp2.X/2,vp2.Y/2) local best,bD=nil,math.huge for _,p in pairs(Plrs:GetPlayers()) do if p~=LP and p.Character then local hrp=p.Character:FindFirstChild("HumanoidRootPart") local hum=p.Character:FindFirstChild("Humanoid") if hrp and hum and hum.Health>0 then local sp,on=cam:WorldToScreenPoint(hrp.Position) if on then local d=(Vector2.new(sp.X,sp.Y)-ctr).Magnitude if d<abFOV and d<bD then bD=d best=p end end end end end return best end
+    Aim:Section({Title="Aimbot"})
+    local abC
+    Aim:Toggle({Title="Aimbot",Description="Locks camera to nearest head",Default=false,Callback=function(v) abOn=v if v then abC=RS.RenderStepped:Connect(function() if not abOn then return end local p=getNear() if p and p.Character then local h=p.Character:FindFirstChild("Head") if h then local cam=game:GetService("Workspace").CurrentCamera local d=(h.Position-cam.CFrame.Position).Unit cam.CFrame=cam.CFrame:Lerp(CFrame.new(cam.CFrame.Position,cam.CFrame.Position+d),abSmooth) end end end) else if abC then abC:Disconnect() abC=nil end end end})
+    Aim:Slider({Title="Aimbot FOV",Min=50,Max=600,Default=200,Callback=function(v) abFOV=v end})
+    Aim:Slider({Title="Smoothness",Description="Lower=snappy Higher=smooth",Min=1,Max=20,Default=4,Callback=function(v) abSmooth=v/20 end})
+    Aim:Section({Title="Silent Aim"})
+    local silC
+    Aim:Toggle({Title="Silent Aim",Description="Snaps shots to nearest player",Default=false,Callback=function(v) silOn=v if v then silC=RS.RenderStepped:Connect(function() if not silOn then return end local p=getNear() if p and p.Character then local h=p.Character:FindFirstChild("Head") if h then local cam=game:GetService("Workspace").CurrentCamera local d=(h.Position-cam.CFrame.Position).Unit cam.CFrame=CFrame.new(cam.CFrame.Position,cam.CFrame.Position+d) end end end) else if silC then silC:Disconnect() silC=nil end end end})
+    Aim:Section({Title="Invisibility"})
+    local invP={}
+    local function setInv(s) invOn=s if LP.Character then for _,p in pairs(LP.Character:GetDescendants()) do if p:IsA("BasePart") or p:IsA("Decal") then if s then invP[p]=p.Transparency p.Transparency=1 else if invP[p]~=nil then p.Transparency=invP[p] end end end end end end
+    Aim:Toggle({Title="Invisibility + Aim",Description="Go invisible while aimbot active",Default=false,Callback=function(v) setInv(v) if not v then invP={} end end})
+
+    -- SETTINGS
+    Cfg:Section({Title="Interface"})
+    Cfg:Toggle({Title="Show Notifications",Default=true,Callback=function(v) print("Notifs:",v) end})
+    Cfg:Button({Title="Replay Intro",Description="Watch the intro again",Callback=function() createIntro(function() end) end})
+
+    -- THE CHOSEN ONE
+    TCO:Section({Title="Scripts"})
+    TCO:Button({Title="Translator",Description="Translates chat to English",Callback=function() W:Notify({Title="The Chosen One",Content="Loading...",Duration=3}) local ok,e=pcall(function() loadstring(game:HttpGet("https://rawscripts.net/raw/Universal-Script-Language-Translator-Eg-English-t-Spanish-if-you-talk-in-chat-60756"))() end) if not ok then W:Notify({Title="Error",Content=tostring(e),Duration=5}) end end})
+    TCO:Button({Title="Extra Stuff",Description="Loads extra utilities",Callback=function() W:Notify({Title="The Chosen One",Content="Loading...",Duration=3}) local ok,e=pcall(function() loadstring(game:HttpGet("https://rawscripts.net/raw/The-Chosen-One-Extra-Stuff-18127"))() end) if not ok then W:Notify({Title="Error",Content=tostring(e),Duration=5}) end end})
+    TCO:Button({Title="Bkit Fixer",Description="Fixes backpack/kit issues",Callback=function() W:Notify({Title="The Chosen One",Content="Loading Bkit Fixer...",Duration=3}) local ok,e=pcall(function() loadstring(game:HttpGet("https://pastebin.com/raw/H6ZsgT7J"))() end) if not ok then W:Notify({Title="Error",Content=tostring(e),Duration=5}) end end})
+    TCO:Button({Title="Bkit Destroyer",Description="Destroys bkit at your position",Callback=function()
+        local ok,e=pcall(function()
+            local pc=game.Players.LocalPlayer.Character
+            if not pc then W:Notify({Title="Bkit Destroyer",Content="Character not found. Try again.",Duration=4}) return end
+            local deleteTool=pc:FindFirstChild("Delete")
+            if not deleteTool then W:Notify({Title="Bkit Destroyer",Content="Equip the Delete tool first!",Duration=4}) return end
+            deleteTool.Script.Event:FireServer(game:GetService("ReplicatedStorage").Brick,pc.HumanoidRootPart.Position)
+            W:Notify({Title="Bkit Destroyer",Content="Fired!",Duration=3})
+        end)
+        if not ok then W:Notify({Title="Error",Content=tostring(e),Duration=5}) end
+    end})
+    TCO:Section({Title="Griefer Detector"})
+    local gOn=false local remCt=0 local remT=tick() local lastG=0
+    TCO:Toggle({Title="Griefer Detector",Description="Notifies if someone spams deletions",Default=false,Callback=function(v) gOn=v remCt=0 if v then W:Notify({Title="Griefer Detector",Content="Monitoring active.",Duration=4}) game:GetService("Workspace").DescendantRemoving:Connect(function(obj) if not gOn then return end if obj:IsA("BasePart") or obj:IsA("Model") then remCt=remCt+1 local now=tick() if now-remT>3 then remCt=1 remT=now end if remCt>=5 and now-lastG>8 then lastG=now local best,bD=nil,math.huge local op=obj:IsA("BasePart") and obj.Position or Vector3.new(0,0,0) for _,p in pairs(Plrs:GetPlayers()) do if p~=LP and p.Character then local h=p.Character:FindFirstChild("HumanoidRootPart") if h then local d=(h.Position-op).Magnitude if d<bD then bD=d best=p end end end end W:Notify({Title="Griefer Detected!",Content=(best and best.Name or "Unknown").." might be griefing",Duration=8}) remCt=0 end end end) end end})
+end)
