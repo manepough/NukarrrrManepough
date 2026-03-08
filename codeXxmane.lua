@@ -700,56 +700,69 @@ local function getBrick() return ReplicatedStorage:FindFirstChild("Brick") end
 -- BYPASS TEXT — inserts <font size='0'></font> between every letter
 -- so chat filters / admin logs can't read the words
 -- ============================================================
-local BP = "<font size='0'></font>"
+local BP          = "<font size='0'></font>"
+local TextService = game:GetService("TextService")
 
--- Words Roblox filters — only these get the bypass tag inserted
--- Safe words pass through untouched
-local FILTERED_WORDS = {
-    "fuck","shit","ass","bitch","pussy","dick","cock","cunt","nigger","nigga",
-    "niger","nigg","fag","faggot","retard","whore","slut","bastard","damn",
-    "hell","piss","rape","sex","porn","nude","naked","kill","die","dead",
-    "hate","stupid","idiot","loser","noob","kys","kms","admin","bypass",
-    "hack","hacked","exploit","cheat","cheater","trash","garbage","suck",
-    "sucks","gay","lesbian","homo","queer","pedo","molest","abuse","toxic",
-}
-
-local function wordNeedsFilter(word)
-    local lower = word:lower()
-    for _, fw in ipairs(FILTERED_WORDS) do
-        if lower:find(fw, 1, true) then return true end
-    end
-    return false
+-- Check if text would be filtered by Roblox (returns ### tags)
+local function isFiltered(text)
+    local ok, result = pcall(function()
+        local f = TextService:FilterStringAsync(text, LocalPlayer.UserId)
+        return f:GetNonChatStringForBroadcastAsync()
+    end)
+    if not ok then return false end
+    return result:find("#") ~= nil
 end
 
--- Adds bypass tags randomly (1-3 letter chunks) inside a single word
-local function bypassWord(word)
+-- Build a bypass attempt with a given chunk size (bigger = fewer tags = less visible)
+local function buildBypass(str, minChunk, maxChunk)
     local result = ""
     local i = 1
-    while i <= #word do
-        local chunkSize = math.random(1, 3)
-        local chunk = word:sub(i, i + chunkSize - 1)
-        result = result .. chunk
-        i = i + chunkSize
-        if i <= #word then result = result .. BP end
+    while i <= #str do
+        local chunk = math.random(minChunk, maxChunk)
+        result = result .. str:sub(i, i + chunk - 1)
+        i = i + chunk
+        if i <= #str then result = result .. BP end
     end
     return result
 end
 
--- Only bypass words Roblox would tag, leave clean words alone
--- e.g. "your nigger" → "your n<tag>ig<tag>ger"
+-- Smart bypass:
+-- 1. If Roblox doesn't filter the text at all → return as-is (no tags)
+-- 2. Try large chunks first (fewer tags, less visible) → up to small chunks
+-- 3. Retry each density multiple times (randomized placement)
+-- 4. If still tagged after all attempts → every single char gets a tag
 local function bypassText(str)
     if not str or str == "" then return "" end
-    local result = ""
-    -- Split by spaces, process word by word
-    for word in (str .. " "):gmatch("([^%s]*) ") do
-        if wordNeedsFilter(word) then
-            result = result .. bypassWord(word) .. " "
-        else
-            result = result .. word .. " "
+
+    -- Don't touch it if it's clean
+    if not isFiltered(str) then return str end
+
+    -- Density levels: {minChunk, maxChunk, attempts}
+    -- Start with big chunks (few tags) → go smaller if still filtered
+    local levels = {
+        {4, 6, 4},   -- ~1 tag per 4-6 chars — barely visible
+        {3, 5, 4},   -- ~1 tag per 3-5 chars
+        {2, 4, 5},   -- ~1 tag per 2-4 chars
+        {1, 3, 6},   -- ~1 tag per 1-3 chars
+        {1, 2, 6},   -- ~1 tag per 1-2 chars
+    }
+
+    for _, lvl in ipairs(levels) do
+        for _ = 1, lvl[3] do
+            local attempt = buildBypass(str, lvl[1], lvl[2])
+            if not isFiltered(attempt) then
+                return attempt  -- found one that passes!
+            end
         end
     end
-    -- Trim trailing space
-    return result:match("^(.-)%s*$")
+
+    -- Nuclear fallback: tag between every single character
+    local result = ""
+    for i = 1, #str do
+        result = result .. str:sub(i, i)
+        if i < #str then result = result .. BP end
+    end
+    return result
 end
 
 -- ============================================================
@@ -822,9 +835,11 @@ local function runNuke()
         end
     end
 
-    -- STEP 2: Paint faces — use text exactly as typed (bypass btn adds tags manually)
+    -- STEP 2: Paint faces — auto-bypass via TextService retry
     for _, n in ipairs(faces) do
-        local ft = faceData[n] and faceData[n].txt.Text ~= "" and faceData[n].txt.Text or (tp[n] or "GGS")
+        local rawTxt = faceData[n] and faceData[n].txt.Text ~= "" and faceData[n].txt.Text or (tp[n] or "GGS")
+        -- Smart bypass: checks with Roblox TextService, retries until not filtered
+        local ft = bypassText(rawTxt)
         local fc = faceData[n] and faceData[n].clr.BackgroundColor3 or Color3.fromRGB(255, 0, 0)
         for attempt = 1, 3 do
             pcall(function() remote:FireServer(brick, faceEnums[n], rootPos, key, fc, "spray", ft) end)
@@ -917,184 +932,6 @@ local function fireDeleteTool(v)
 end
 
 -- ============================================================
--- CUSTOM KEYBOARD
--- Appears at bottom of screen when any face TextBox is tapped
--- Has all letters, numbers, BP button, space, backspace, done
--- ============================================================
-local kbGui     = Instance.new("Frame", gui)
-kbGui.Name      = "CustomKeyboard"
-kbGui.Size      = UDim2.new(1, 0, 0, 280)
-kbGui.Position  = UDim2.new(0, 0, 1, 0)   -- hidden below screen
-kbGui.BackgroundColor3 = Color3.fromRGB(18, 18, 32)
-kbGui.BorderSizePixel  = 0
-kbGui.ZIndex    = 50
-kbGui.Visible   = true   -- always in tree, just off screen
-
-local kbTarget  = nil    -- the TextBox currently being edited
-local kbText    = ""     -- current string
-local kbCursor  = 0      -- insert position (0 = end)
-local kbOpen    = false
-
--- Slide animations
-local function showKB(targetTxt)
-    kbTarget = targetTxt
-    kbText   = targetTxt.Text
-    kbCursor = #kbText   -- cursor at end
-    kbOpen   = true
-    TweenService:Create(kbGui, TweenInfo.new(0.22, Enum.EasingStyle.Quart, Enum.EasingDirection.Out),
-        {Position = UDim2.new(0, 0, 1, -280)}):Play()
-end
-
-local function hideKB()
-    kbOpen = false
-    TweenService:Create(kbGui, TweenInfo.new(0.18, Enum.EasingStyle.Quart, Enum.EasingDirection.In),
-        {Position = UDim2.new(0, 0, 1, 0)}):Play()
-    task.delay(0.2, function()
-        if not kbOpen then kbTarget = nil end
-    end)
-end
-
--- Write kbText back to the target box
-local function flushText()
-    if kbTarget then kbTarget.Text = kbText end
-end
-
--- Insert at cursor
-local function kbInsert(str)
-    kbText   = kbText:sub(1, kbCursor) .. str .. kbText:sub(kbCursor + 1)
-    kbCursor = kbCursor + #str
-    flushText()
-end
-
-local function kbBackspace()
-    if kbCursor > 0 then
-        kbText   = kbText:sub(1, kbCursor - 1) .. kbText:sub(kbCursor + 1)
-        kbCursor = kbCursor - 1
-        flushText()
-    end
-end
-
--- ── KB BUTTON FACTORY ─────────────────────────────────────────
-local function kbBtn(parent, label, x, y, w, h, col, ts, onPress)
-    local col2 = col or Color3.fromRGB(40, 40, 66)
-    local b = Instance.new("TextButton", parent)
-    b.Size             = UDim2.fromOffset(w, h)
-    b.Position         = UDim2.fromOffset(x, y)
-    b.Text             = label
-    b.Font             = Enum.Font.GothamBold
-    b.TextSize         = ts or 16
-    b.TextColor3       = Color3.fromRGB(230, 230, 255)
-    b.BackgroundColor3 = col2
-    b.BorderSizePixel  = 0
-    b.AutoButtonColor  = false
-    b.ZIndex           = 51
-    Instance.new("UICorner", b).CornerRadius = UDim.new(0, 8)
-    local function press()
-        TweenService:Create(b, TweenInfo.new(0.05), {BackgroundColor3 = Color3.fromRGB(11,95,226)}):Play()
-        task.delay(0.12, function() TweenService:Create(b, TweenInfo.new(0.1), {BackgroundColor3 = col2}):Play() end)
-        onPress()
-    end
-    b.MouseButton1Click:Connect(press)
-    b.InputBegan:Connect(function(i)
-        if i.UserInputType == Enum.UserInputType.Touch then press() end
-    end)
-    return b
-end
-
--- ── CURRENT TEXT DISPLAY ──────────────────────────────────────
-local kbDisplay = Instance.new("TextLabel", kbGui)
-kbDisplay.Size             = UDim2.new(1, -12, 0, 36)
-kbDisplay.Position         = UDim2.fromOffset(6, 4)
-kbDisplay.BackgroundColor3 = Color3.fromRGB(28, 28, 46)
-kbDisplay.BorderSizePixel  = 0
-kbDisplay.Font             = Enum.Font.Gotham
-kbDisplay.TextSize         = 14
-kbDisplay.TextColor3       = Color3.fromRGB(220, 220, 240)
-kbDisplay.TextXAlignment   = Enum.TextXAlignment.Left
-kbDisplay.ZIndex           = 51
-kbDisplay.ClipsDescendants = true
-Instance.new("UICorner", kbDisplay).CornerRadius = UDim.new(0, 8)
-Instance.new("UIPadding", kbDisplay).PaddingLeft = UDim.new(0, 8)
-
--- Update display each frame to show cursor
-RunService.Heartbeat:Connect(function()
-    if not kbOpen then return end
-    -- Show cursor as | character
-    local before = kbText:sub(1, kbCursor)
-    local after  = kbText:sub(kbCursor + 1)
-    kbDisplay.Text = before .. "|" .. after
-end)
-
--- ── KEYBOARD ROWS ─────────────────────────────────────────────
--- Row sizes: key w=34, h=36, gap=2
-local KW, KH, KG = 34, 36, 2
-local ROW_Y = {44, 84, 124, 164, 224}
-
--- ROW 1: 1234567890
-local row1 = {"1","2","3","4","5","6","7","8","9","0"}
-for i, k in ipairs(row1) do
-    local x = (i-1)*(KW+KG) + 4
-    kbBtn(kbGui, k, x, ROW_Y[1], KW, KH, nil, 15, function() kbInsert(k) end)
-end
-
--- ROW 2: QWERTYUIOP
-local row2 = {"Q","W","E","R","T","Y","U","I","O","P"}
-for i, k in ipairs(row2) do
-    local x = (i-1)*(KW+KG) + 4
-    kbBtn(kbGui, k, x, ROW_Y[2], KW, KH, nil, 14, function() kbInsert(k) end)
-end
-
--- ROW 3: ASDFGHJKL + backspace
-local row3 = {"A","S","D","F","G","H","J","K","L"}
-for i, k in ipairs(row3) do
-    local x = (i-1)*(KW+KG) + 4
-    kbBtn(kbGui, k, x, ROW_Y[3], KW, KH, nil, 14, function() kbInsert(k) end)
-end
--- Backspace at end of row 3
-local bsX = #row3*(KW+KG) + 6
-kbBtn(kbGui, "⌫", bsX, ROW_Y[3], 46, KH, Color3.fromRGB(90,20,20), 16, kbBackspace)
-
--- ROW 4: ZXCVBNM + symbols
-local row4 = {"Z","X","C","V","B","N","M","!","?","."}
-for i, k in ipairs(row4) do
-    local x = (i-1)*(KW+KG) + 4
-    kbBtn(kbGui, k, x, ROW_Y[4], KW, KH, nil, 14, function() kbInsert(k) end)
-end
-
--- ROW 5 (bottom): SPACE, BP, '/', DONE
-local bottomY = ROW_Y[5] - 4
--- SPACE — wide
-kbBtn(kbGui, "SPACE", 4, bottomY, 140, KH, Color3.fromRGB(40,40,70), 13, function() kbInsert(" ") end)
--- BP button — purple, inserts the bypass tag
-kbBtn(kbGui, "BP", 150, bottomY, 54, KH, Color3.fromRGB(70,10,140), 13, function()
-    kbInsert("<font size='0'></font>")
-end)
--- Apostrophe / dash / quote
-kbBtn(kbGui, "'", 210, bottomY, KW, KH, nil, 15, function() kbInsert("'") end)
-kbBtn(kbGui, "-", 248, bottomY, KW, KH, nil, 15, function() kbInsert("-") end)
-kbBtn(kbGui, "/", 286, bottomY, KW, KH, nil, 15, function() kbInsert("/") end)
--- DONE
-kbBtn(kbGui, "✓ DONE", 324, bottomY, 100, KH, Color3.fromRGB(11,95,40), 13, function()
-    if kbTarget then kbTarget.Text = kbText end
-    hideKB()
-end)
-
--- ── CLOSE ON OUTSIDE CLICK ────────────────────────────────────
-UserInputService.InputBegan:Connect(function(input)
-    if not kbOpen then return end
-    if input.UserInputType == Enum.UserInputType.MouseButton1
-    or input.UserInputType == Enum.UserInputType.Touch then
-        -- Check if click was outside keyboard area
-        local screenY = input.Position.Y
-        local kbScreenY = kbGui.AbsolutePosition.Y
-        if screenY < kbScreenY - 10 then
-            if kbTarget then kbTarget.Text = kbText end
-            hideKB()
-        end
-    end
-end)
-
--- ============================================================
 -- PAGE 1: NUKE
 -- ============================================================
 createLabel(pgNuke, "  Face Text & Colors", Color3.fromRGB(80,80,120), 13)
@@ -1104,53 +941,25 @@ for _, name in ipairs(faces) do
     row.BackgroundColor3 = Color3.fromRGB(42, 42, 62)
     row.BorderSizePixel  = 0
     Instance.new("UICorner", row).CornerRadius = UDim.new(0, 10)
+
     local fl = Instance.new("TextLabel", row)
     fl.Size=UDim2.fromOffset(50,34); fl.Position=UDim2.fromOffset(4,0)
     fl.Text=name; fl.TextColor3=Color3.fromRGB(80,80,110); fl.Font=Enum.Font.GothamBold
     fl.TextSize=10; fl.BackgroundTransparency=1
 
-    -- Display label (acts like a textbox but uses our keyboard)
-    local txt = Instance.new("TextButton", row)
-    txt.Size             = UDim2.fromOffset(CW-62, 26)
+    local txt = Instance.new("TextBox", row)
+    txt.Size             = UDim2.fromOffset(CW-66, 26)
     txt.Position         = UDim2.fromOffset(54, 4)
     txt.BackgroundColor3 = Color3.fromRGB(28, 28, 46)
-    txt.Text             = "GG'S"
+    txt.Text             = "GG\'S"
+    txt.PlaceholderText  = name.." text"
+    txt.TextColor3       = Color3.fromRGB(200, 200, 220)
     txt.Font             = Enum.Font.Gotham
     txt.TextSize         = 12
-    txt.TextColor3       = Color3.fromRGB(200, 200, 220)
-    txt.TextXAlignment   = Enum.TextXAlignment.Left
     txt.BorderSizePixel  = 0
-    txt.AutoButtonColor  = false
-    txt.ZIndex           = 10
+    txt.ClearTextOnFocus = false
     Instance.new("UICorner", txt).CornerRadius = UDim.new(0, 6)
-    Instance.new("UIPadding", txt).PaddingLeft = UDim.new(0, 6)
 
-    -- Tap to open custom keyboard
-    txt.MouseButton1Click:Connect(function()
-        -- Sync kbText with current display
-        kbText   = txt.Text
-        kbCursor = #kbText
-        -- Pass a proxy table so flushText updates the label
-        kbTarget = {
-            Text = txt.Text,
-        }
-        -- Use metatable so writing kbTarget.Text also updates txt.Text
-        setmetatable(kbTarget, {
-            __newindex = function(t, k, v)
-                rawset(t, k, v)
-                if k == "Text" then txt.Text = v end
-            end
-        })
-        kbText   = txt.Text
-        kbCursor = #kbText
-        showKB(kbTarget)
-        -- Highlight border to show active
-        local stroke = txt:FindFirstChildOfClass("UIStroke") or Instance.new("UIStroke", txt)
-        stroke.Color     = Color3.fromRGB(11, 95, 226)
-        stroke.Thickness = 2
-    end)
-
-    -- faceData still stores txt reference for reading .Text
     local clr = Instance.new("TextButton", row)
     clr.Size=UDim2.fromOffset(28,28); clr.Position=UDim2.fromOffset(CW-32,3)
     clr.BackgroundColor3=Color3.fromRGB(255,0,0); clr.Text=""; clr.BorderSizePixel=0
