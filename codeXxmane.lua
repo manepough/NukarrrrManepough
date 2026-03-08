@@ -1007,6 +1007,133 @@ createLabel(pgFix, "  Repair / Clean Brick", Color3.fromRGB(80,80,120), 13)
 createLabel(pgFix, "  Plastic  |  Unanchored  |  Light Gray  |  Clears text", Color3.fromRGB(11,95,226), 13)
 createButton(pgFix, "🛠  FIX BRICK  (PLASTIC + UNANCHOR)", function() task.spawn(runFix) end, CW, 46)
 
+createDivider(pgFix)
+createLabel(pgFix, "  Restore Build", Color3.fromRGB(80,80,120), 13)
+createLabel(pgFix, "  Replaces your brick from saved brickcollection", Color3.fromRGB(11,95,226), 11)
+
+createButton(pgFix, "🔄  RESTORE BUILD", function()
+    task.spawn(function()
+        -- Make sure ReplicatedStorage has a Brick reference
+        if not game.ReplicatedStorage:FindFirstChild("Brick") then
+            local brick = Instance.new("Part")
+            brick.Name = "Brick"
+            brick.Parent = game.ReplicatedStorage
+        end
+
+        -- Equip Build tool
+        local function equipTool(name)
+            local char = LocalPlayer.Character
+            local tool = (char and char:FindFirstChild(name))
+                      or LocalPlayer.Backpack:FindFirstChild(name)
+            if not tool then return nil end
+            if tool.Parent ~= char then
+                tool.Parent = char
+                task.wait(0.1)
+            end
+            return char and char:FindFirstChild(name)
+        end
+
+        local function getPlrPos()
+            local char = LocalPlayer.Character
+            local hrp  = char and char:FindFirstChild("HumanoidRootPart")
+            return hrp and hrp.Position or Vector3.new(0,0,0)
+        end
+
+        local et = equipTool("Build")
+        if not et then
+            print("[RESTORE] Build tool not found!")
+            return
+        end
+
+        -- Check brickcollection exists
+        if not getgenv or not getgenv().brickcollection then
+            print("[RESTORE] No brickcollection found — run the game script first")
+            return
+        end
+
+        local ws = 0.15  -- wait between builds
+
+        -- Sort: non-Brick/Debris entries first
+        local currbc = {}
+        for i, v in pairs(getgenv().brickcollection) do
+            if v ~= nil then
+                if v:GetFullName() ~= "Brick" and v.Name ~= "Debris" then
+                    table.insert(currbc, 1, v)
+                else
+                    table.insert(currbc, v)
+                end
+            else
+                table.remove(getgenv().brickcollection, table.find(getgenv().brickcollection, v))
+            end
+        end
+
+        local bricksFolder = workspace:FindFirstChild("Bricks")
+        local myBricks     = bricksFolder and bricksFolder:FindFirstChild(LocalPlayer.Name)
+        local beforeAmt    = myBricks and #myBricks:GetChildren() or 0
+        local nof          = #currbc
+
+        print("[RESTORE] Starting — " .. nof .. " bricks to restore")
+
+        for i, v in pairs(currbc) do
+            if v ~= nil then
+                et = equipTool("Build")
+                if not et then
+                    print("[RESTORE] Build tool lost — stopping")
+                    break
+                end
+
+                -- Fire build event (adapted from original)
+                pcall(function()
+                    local ev = et:FindFirstChild("origevent")
+                    if ev then
+                        ev:Invoke(v, Enum.NormalId.Top, getPlrPos(), "detailed")
+                    else
+                        et.Script.Event:FireServer(
+                            v,
+                            Enum.NormalId.Top,
+                            getPlrPos(),
+                            "detailed"
+                        )
+                    end
+                end)
+
+                print("[RESTORE] Brick " .. (nof + 1 - i) .. " of " .. nof .. " — " .. v.Name)
+                task.wait(ws)
+
+                -- If a new brick appeared, success for this one
+                local nowAmt = myBricks and #myBricks:GetChildren() or 0
+                if nowAmt > beforeAmt then
+                    beforeAmt = nowAmt
+                end
+            else
+                table.remove(currbc, table.find(currbc, v))
+            end
+        end
+
+        -- Restart tool scripts (fixes tool state after mass building)
+        for _, v in ipairs(LocalPlayer.Character:GetChildren()) do
+            if v:HasTag("The Chosen One by TomazDev") then
+                pcall(function() v.Script.Enabled = false; v.Script.Enabled = true end)
+            end
+        end
+        for _, v in ipairs(LocalPlayer.Backpack:GetChildren()) do
+            if v:HasTag("The Chosen One by TomazDev") then
+                pcall(function() v.Script.Enabled = false; v.Script.Enabled = true end)
+            end
+        end
+
+        task.wait(1)
+
+        -- Check result
+        local myNewBricks = myBricks and myBricks:FindFirstChildWhichIsA("BasePart")
+        if myNewBricks then
+            print("[RESTORE] Build restored successfully!")
+        else
+            print("[RESTORE] Failed — run script before everything is delcubed")
+        end
+    end)
+end, CW, 46)
+
 -- ============================================================
 -- PAGE 3: SLOTS
 -- ============================================================
