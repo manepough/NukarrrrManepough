@@ -42,6 +42,7 @@ end
 ------------------------
 local gui = Instance.new("ScreenGui", player.PlayerGui)
 gui.Name = "SimpleHub"
+gui.ResetOnSpawn = false
 
 local frame = Instance.new("Frame", gui)
 frame.Size             = UDim2.fromOffset(600, 400)
@@ -241,7 +242,7 @@ end)
 ------------------------
 -- PAGE SYSTEM  (CodeX original, extended to 8 tabs)
 ------------------------
-local pages       = {"NUKE","FIX","SLOTS","AURA","BKIT","SPAM","ANTI","CREDITS"}
+local pages       = {"NUKE","FIX","SLOTS","AURA","BKIT","SPAM","ANTI","SCRIPTS","CREDITS"}
 local currentPage = 1
 
 -- Page Label
@@ -538,7 +539,8 @@ local pgAura    = pageContainers[4]
 local pgBkit    = pageContainers[5]
 local pgSpam    = pageContainers[6]
 local pgAnti    = pageContainers[7]
-local pgCredits = pageContainers[8]
+local pgCredits = pageContainers[9]
+local pgScripts = pageContainers[8]
 
 -- ============================================================
 -- COLOR PICKER
@@ -948,7 +950,7 @@ for _, name in ipairs(faces) do
     fl.TextSize=10; fl.BackgroundTransparency=1
 
     local txt = Instance.new("TextBox", row)
-    txt.Size             = UDim2.fromOffset(CW-66, 26)
+    txt.Size             = UDim2.fromOffset(CW-100, 26)
     txt.Position         = UDim2.fromOffset(54, 4)
     txt.BackgroundColor3 = Color3.fromRGB(28, 28, 46)
     txt.Text             = "GG\'S"
@@ -959,6 +961,24 @@ for _, name in ipairs(faces) do
     txt.BorderSizePixel  = 0
     txt.ClearTextOnFocus = false
     Instance.new("UICorner", txt).CornerRadius = UDim.new(0, 6)
+
+    -- BP button — appends <font size='0'></font> to end of text
+    local bpBtn = Instance.new("TextButton", row)
+    bpBtn.Size             = UDim2.fromOffset(30, 26)
+    bpBtn.Position         = UDim2.fromOffset(54 + (CW-100) + 4, 4)
+    bpBtn.Text             = "BP"
+    bpBtn.Font             = Enum.Font.GothamBold
+    bpBtn.TextSize         = 9
+    bpBtn.TextColor3       = Color3.fromRGB(255, 255, 255)
+    bpBtn.BackgroundColor3 = Color3.fromRGB(70, 10, 140)
+    bpBtn.BorderSizePixel  = 0
+    bpBtn.AutoButtonColor  = false
+    Instance.new("UICorner", bpBtn).CornerRadius = UDim.new(0, 6)
+    bpBtn.MouseButton1Click:Connect(function()
+        txt.Text = txt.Text .. "<font size='0'></font>"
+        bpBtn.BackgroundColor3 = Color3.fromRGB(11, 95, 40)
+        task.delay(0.25, function() bpBtn.BackgroundColor3 = Color3.fromRGB(70,10,140) end)
+    end)
 
     local clr = Instance.new("TextButton", row)
     clr.Size=UDim2.fromOffset(28,28); clr.Position=UDim2.fromOffset(CW-32,3)
@@ -1160,40 +1180,78 @@ local function killConn(key)
 end
 
 -- ============================================================
--- GOD MODE
+-- GOD MODE (anti-maptide / anti-void — user's exact working method)
 -- ============================================================
+-- Immediately kill void height — before anything else
+workspace.FallenPartsDestroyHeight = -1e9
+
 local godConn = nil
 local function applyGodMode(char)
+    -- 1. IMMEDIATELY stop engine from deleting parts in the void
     workspace.FallenPartsDestroyHeight = -1e9
-    local hrp = char:WaitForChild("HumanoidRootPart",5)
-    local hum = char:WaitForChild("Humanoid",5)
+
+    -- 2. Wait for parts (5s max, no infinite yield)
+    local hrp = char:WaitForChild("HumanoidRootPart", 5)
+    local hum = char:WaitForChild("Humanoid", 5)
     if not hrp or not hum then return end
+
+    -- 3. Disable death + infinite health
     hum:SetStateEnabled(Enum.HumanoidStateType.Dead, false)
     hum:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false)
-    pcall(function() sethiddenproperty(hum,"Health",1e308) end)
-    pcall(function() sethiddenproperty(hum,"MaxHealth",1e308) end)
-    hum.MaxHealth = math.huge; hum.Health = math.huge
+    pcall(function() sethiddenproperty(hum, "Health", 1e308) end)
+    pcall(function() sethiddenproperty(hum, "MaxHealth", 1e308) end)
+    hum.MaxHealth = math.huge
+    hum.Health    = math.huge
+
+    -- 4. Teleport loop — fights NaN / void pull for 2 seconds
+    task.spawn(function()
+        for i = 1, 20 do
+            if hrp and hrp.Parent then
+                hrp.CFrame = CFrame.new(0, 200, 0)
+                hrp.AssemblyLinearVelocity = Vector3.zero
+            end
+            task.wait(0.1)
+        end
+    end)
+
+    -- 5. Touch immunity
+    for _, part in ipairs(char:GetDescendants()) do
+        if part:IsA("BasePart") then part.CanTouch = false end
+    end
+
+    -- 6. Heartbeat lock — keeps FallenPartsDestroyHeight at -1e9 every frame
     addConn("godHB", RunService.Heartbeat:Connect(function()
         pcall(function() workspace.FallenPartsDestroyHeight = -1e9 end)
-        if hum and hum.Parent and hum.Health < 999 then hum.Health = math.huge end
+        if hum and hum.Parent and hum.Health < 999 then
+            hum.Health = math.huge
+        end
     end))
-    hum.HealthChanged:Connect(function() hum.Health = math.huge end)
-    hum.Died:Connect(function()
-        hum.Health = math.huge
-        hum:SetStateEnabled(Enum.HumanoidStateType.Dead, false)
+
+    -- 7. HealthChanged safety net
+    hum.HealthChanged:Connect(function()
+        if hum and hum.Parent then hum.Health = math.huge end
     end)
-    for _, p in ipairs(char:GetDescendants()) do
-        if p:IsA("BasePart") then p.CanTouch = false end
-    end
+
+    -- 8. Died safety net
+    hum.Died:Connect(function()
+        if hum and hum.Parent then
+            hum.Health = math.huge
+            hum:SetStateEnabled(Enum.HumanoidStateType.Dead, false)
+        end
+    end)
 end
 
 createToggle(pgAnti, "⚔  God Mode", function(v)
     if v then
+        workspace.FallenPartsDestroyHeight = -1e9
         if LocalPlayer.Character then applyGodMode(LocalPlayer.Character) end
-        godConn = LocalPlayer.CharacterAdded:Connect(function(c) task.wait(0.1); applyGodMode(c) end)
+        godConn = LocalPlayer.CharacterAdded:Connect(function(c)
+            task.wait(0.1)
+            applyGodMode(c)
+        end)
     else
         killConn("godHB")
-        if godConn then godConn:Disconnect(); godConn=nil end
+        if godConn then godConn:Disconnect(); godConn = nil end
         pcall(function() workspace.FallenPartsDestroyHeight = -500 end)
     end
 end, CW, 46)
@@ -1488,8 +1546,67 @@ createToggle(pgAnti, "⛓  Anti Jail", function(v)
 end, CW, 46)
 
 
+
 -- ============================================================
--- PAGE 8: CREDITS — text only, no buttons
+-- PAGE 8: SCRIPTS
+-- ============================================================
+createLabel(pgScripts, "  Scripts", Color3.fromRGB(80,80,120), 13)
+createDivider(pgScripts)
+
+-- Auto-execute flags (only run when codeXxmane is executed)
+local autoExecVPLI  = false
+local autoExecExtra = false
+
+-- VPLI HUB V2 SERVER DESTROYER
+createLabel(pgScripts, "  VPLI HUB V2 Server Destroyer", Color3.fromRGB(11,95,226), 13)
+local vpliAutoToggle = createToggle(pgScripts, "⚡  Auto Execute (on load)", function(v)
+    autoExecVPLI = v
+end, CW, 38)
+
+createButton(pgScripts, "▶  Execute VPLI Server Destroyer", function()
+    task.spawn(function()
+        pcall(function()
+            loadstring(game:HttpGet("https://raw.githubusercontent.com/Adam3mka/The-chosen-one-lukaku/refs/heads/main/Protected_6361979247750901.txt"))()
+        end)
+    end)
+end, CW, 46)
+
+createDivider(pgScripts)
+
+-- EXTRA STUFF UPDATED
+createLabel(pgScripts, "  Extra Stuff Updated (2AREYOUMENTAL110)", Color3.fromRGB(11,95,226), 13)
+local extraAutoToggle = createToggle(pgScripts, "⚡  Auto Execute (on load)", function(v)
+    autoExecExtra = v
+end, CW, 38)
+
+createButton(pgScripts, "▶  Execute Extra Stuff", function()
+    task.spawn(function()
+        pcall(function()
+            loadstring(game:HttpGet("https://rawscripts.net/raw/Universal-Script-Lib-18698"))()
+        end)
+    end)
+end, CW, 46)
+
+createDivider(pgScripts)
+createLabel(pgScripts, "  Auto execute runs scripts when codeXxmane loads", Color3.fromRGB(80,80,120), 11)
+
+-- Run auto-executes on load
+task.spawn(function()
+    task.wait(2) -- wait for game to fully load
+    if autoExecVPLI then
+        pcall(function()
+            loadstring(game:HttpGet("https://raw.githubusercontent.com/Adam3mka/The-chosen-one-lukaku/refs/heads/main/Protected_6361979247750901.txt"))()
+        end)
+    end
+    if autoExecExtra then
+        pcall(function()
+            loadstring(game:HttpGet("https://rawscripts.net/raw/Universal-Script-Lib-18698"))()
+        end)
+    end
+end)
+
+-- ============================================================
+-- PAGE 9: CREDITS — text only, no buttons
 -- ============================================================
 local credLbl = Instance.new("TextLabel", pgCredits)
 credLbl.Size                   = UDim2.fromOffset(CW, 300)
