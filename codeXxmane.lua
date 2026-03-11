@@ -242,7 +242,7 @@ end)
 ------------------------
 -- PAGE SYSTEM  (CodeX original, extended to 8 tabs)
 ------------------------
-local pages       = {"NUKE","FIX","SLOTS","AURA","BKIT","SPAM","ANTI","SCRIPTS","CREDITS"}
+local pages       = {"NUKE","FIX","SLOTS","AURA","BKIT","SPAM","ANTI","SCRIPTS","DONATE","ABUSE","CREDITS"}
 local currentPage = 1
 
 -- Page Label
@@ -539,8 +539,10 @@ local pgAura    = pageContainers[4]
 local pgBkit    = pageContainers[5]
 local pgSpam    = pageContainers[6]
 local pgAnti    = pageContainers[7]
-local pgCredits = pageContainers[9]
+local pgCredits = pageContainers[11]
 local pgScripts = pageContainers[8]
+local pgDonate  = pageContainers[9]
+local pgAbuse   = pageContainers[10]
 
 -- ============================================================
 -- COLOR PICKER
@@ -1733,6 +1735,288 @@ task.spawn(function()
 end)
 
 -- ============================================================
+-- ============================================================
+-- PAGE 9: AUTO DONATE
+-- Spams ;donate <player> <yourtime> every 5 seconds
+-- ============================================================
+createLabel(pgDonate, "  Auto Donate", Color3.fromRGB(80,80,120), 13)
+createLabel(pgDonate, "  Spams ;donate every 5s using your full time", Color3.fromRGB(11,95,226), 11)
+createDivider(pgDonate)
+
+local donateTarget    = ""
+local donateActive    = false
+local donateThread    = nil
+
+-- Target name input
+local donateBox = createTextBox(pgDonate, "Player name to donate to...", CW, 36)
+donateBox.ClearTextOnFocus = false
+donateBox:GetPropertyChangedSignal("Text"):Connect(function()
+    donateTarget = donateBox.Text
+end)
+
+-- Get my current time stat (checks common stat names)
+local function getMyTime()
+    local ls  = LocalPlayer:FindFirstChild("leaderstats")
+    if not ls then return nil end
+    -- Common time stat names in The Chosen One
+    local candidates = {"Time","Minutes","Seconds","Hours","Playtime","Score","Points"}
+    for _, n in ipairs(candidates) do
+        local s = ls:FindFirstChild(n)
+        if s then return tostring(math.floor(tonumber(s.Value) or 0)) end
+    end
+    -- Fallback: return first int/numbervalue
+    for _, v in ipairs(ls:GetChildren()) do
+        if v:IsA("IntValue") or v:IsA("NumberValue") then
+            return tostring(math.floor(tonumber(v.Value) or 0))
+        end
+    end
+    return nil
+end
+
+-- Send chat message FE
+local function sendChat(msg)
+    local StarterGui = game:GetService("StarterGui")
+    -- Try bubble chat fire
+    pcall(function()
+        game:GetService("ReplicatedStorage"):FindFirstChild("DefaultChatSystemChatEvents")
+            :FindFirstChild("SayMessageRequest"):FireServer(msg, "All")
+    end)
+    -- Fallback: use game's chat remote
+    pcall(function()
+        local chatService = game:GetService("Chat")
+        chatService:Chat(LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Head"), msg)
+    end)
+    -- Universal fallback
+    pcall(function()
+        local rs = game:GetService("ReplicatedStorage")
+        local chatEvent = rs:FindFirstChild("SayMessage") or rs:FindFirstChild("ChatEvent")
+        if chatEvent then chatEvent:FireServer(msg, "All") end
+    end)
+end
+
+createToggle(pgDonate, "💸  Auto Donate ON/OFF", function(v)
+    donateActive = v
+    if v then
+        if donateTarget == "" then
+            print("[DONATE] Set a player name first!")
+            donateActive = false
+            return
+        end
+        donateThread = task.spawn(function()
+            while donateActive do
+                local myTime = getMyTime()
+                if myTime and tonumber(myTime) and tonumber(myTime) > 0 then
+                    local msg = ";donate " .. donateTarget .. " " .. myTime
+                    sendChat(msg)
+                    print("[DONATE] Sent: " .. msg)
+                else
+                    print("[DONATE] Could not read your time stat")
+                end
+                task.wait(5)
+            end
+        end)
+    else
+        if donateThread then task.cancel(donateThread); donateThread=nil end
+        print("[DONATE] Stopped")
+    end
+end, CW, 46)
+
+createButton(pgDonate, "💬  Send Once Now", function()
+    local target = donateBox.Text
+    if target == "" then print("[DONATE] No target set"); return end
+    local myTime = getMyTime()
+    if myTime then
+        local msg = ";donate " .. target .. " " .. myTime
+        sendChat(msg)
+        print("[DONATE] Sent: " .. msg)
+    else
+        print("[DONATE] Could not read time stat")
+    end
+end, CW, 38)
+
+-- ============================================================
+-- PAGE 10: ABUSE
+-- Targets a player — spams admin commands every 3s
+-- Detects rejoin and re-abuses. Checks for Enlighten tool.
+-- ============================================================
+createLabel(pgAbuse, "  Abuse", Color3.fromRGB(80,80,120), 13)
+createLabel(pgAbuse, "  Spams commands on target every 3s | Auto-detects rejoin", Color3.fromRGB(11,95,226), 11)
+createDivider(pgAbuse)
+
+local abuseTarget    = ""
+local abuseActive    = false
+local abuseThread    = nil
+local abuseWatchConn = nil
+
+-- Target input
+local abuseBox = createTextBox(pgAbuse, "Target player name...", CW, 36)
+abuseBox.ClearTextOnFocus = false
+abuseBox:GetPropertyChangedSignal("Text"):Connect(function()
+    abuseTarget = abuseBox.Text
+end)
+
+-- Find player by partial name
+local function findPlayer(name)
+    local lower = name:lower()
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p.Name:lower():find(lower, 1, true)
+        or p.DisplayName:lower():find(lower, 1, true) then
+            return p
+        end
+    end
+    return nil
+end
+
+-- Check if we have Enlighten tool
+local function getEnlighten()
+    local char = LocalPlayer.Character
+    local tool = (char and char:FindFirstChild("Enlighten"))
+             or LocalPlayer.Backpack:FindFirstChild("Enlighten")
+    return tool
+end
+
+local function equipEnlighten()
+    local tool = getEnlighten()
+    if not tool then return false end
+    if tool.Parent ~= LocalPlayer.Character then
+        tool.Parent = LocalPlayer.Character
+        task.wait(0.15)
+    end
+    return LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Enlighten") ~= nil
+end
+
+-- The abuse sequence for one cycle
+local abuseCmds = {
+    function(n) sendChat(";freeze "  .. n) end,
+    function(n) sendChat(";glitch "  .. n) end,
+    function(n) sendChat(";mute "    .. n) end,
+    function(n) sendChat(";jail "    .. n) end,
+    function(n) sendChat(";morph "   .. n .. " dont1play2with3me") end,
+}
+
+local function runAbuseCycle(targetName)
+    -- Check Enlighten
+    local enli = getEnlighten()
+    if not enli then
+        print("[ABUSE] ⚠ Enlighten tool not found in backpack! Commands may not work.")
+    else
+        equipEnlighten()
+        print("[ABUSE] ✓ Enlighten equipped")
+    end
+
+    for _, cmd in ipairs(abuseCmds) do
+        if not abuseActive then break end
+        pcall(function() cmd(targetName) end)
+        task.wait(0.4)
+    end
+end
+
+-- Abuse status label
+local abuseStatusLbl = createLabel(pgAbuse, "  Status: Inactive", Color3.fromRGB(116,113,117), 12)
+
+local function setAbuseStatus(txt, col)
+    if abuseStatusLbl then
+        abuseStatusLbl.Text = "  Status: " .. txt
+        abuseStatusLbl.TextColor3 = col or Color3.fromRGB(116,113,117)
+    end
+    print("[ABUSE] " .. txt)
+end
+
+-- Start abuse loop
+local function startAbuse(name)
+    if name == "" then
+        setAbuseStatus("No target set!", Color3.fromRGB(255,80,80))
+        return
+    end
+
+    abuseActive = true
+    setAbuseStatus("Targeting: " .. name, Color3.fromRGB(11,95,226))
+
+    -- Main abuse loop
+    abuseThread = task.spawn(function()
+        while abuseActive do
+            local target = findPlayer(name)
+            if target then
+                runAbuseCycle(target.Name)  -- use exact name
+            else
+                setAbuseStatus("Waiting for " .. name .. " to join...", Color3.fromRGB(255,180,0))
+            end
+            task.wait(3)
+        end
+    end)
+
+    -- Rejoin watcher: when target rejoins → immediately abuse
+    if abuseWatchConn then abuseWatchConn:Disconnect() end
+    abuseWatchConn = Players.PlayerAdded:Connect(function(p)
+        if not abuseActive then return end
+        local lower = name:lower()
+        if p.Name:lower():find(lower,1,true) or p.DisplayName:lower():find(lower,1,true) then
+            setAbuseStatus(p.Name .. " rejoined — abusing!", Color3.fromRGB(255,60,60))
+            task.wait(1)  -- let them load in
+            task.spawn(function()
+                for i = 1, 3 do  -- burst abuse on rejoin
+                    if not abuseActive then break end
+                    runAbuseCycle(p.Name)
+                    task.wait(1)
+                end
+            end)
+        end
+    end)
+end
+
+local function stopAbuse()
+    abuseActive = false
+    if abuseThread then task.cancel(abuseThread); abuseThread=nil end
+    if abuseWatchConn then abuseWatchConn:Disconnect(); abuseWatchConn=nil end
+    setAbuseStatus("Inactive", Color3.fromRGB(116,113,117))
+end
+
+createToggle(pgAbuse, "💀  Abuse ON/OFF", function(v)
+    if v then
+        startAbuse(abuseBox.Text)
+    else
+        stopAbuse()
+    end
+end, CW, 46)
+
+-- Individual command buttons
+createDivider(pgAbuse)
+createLabel(pgAbuse, "  Manual Commands", Color3.fromRGB(80,80,120), 12)
+
+createButton(pgAbuse, "🧊  Freeze",    function()
+    local t = findPlayer(abuseBox.Text)
+    if t then sendChat(";freeze " .. t.Name) end
+end, CW, 36)
+createButton(pgAbuse, "🌀  Glitch",    function()
+    local t = findPlayer(abuseBox.Text)
+    if t then sendChat(";glitch " .. t.Name) end
+end, CW, 36)
+createButton(pgAbuse, "🔇  Mute",      function()
+    local t = findPlayer(abuseBox.Text)
+    if t then sendChat(";mute " .. t.Name) end
+end, CW, 36)
+createButton(pgAbuse, "⛓  Jail",      function()
+    local t = findPlayer(abuseBox.Text)
+    if t then sendChat(";jail " .. t.Name) end
+end, CW, 36)
+createButton(pgAbuse, "👹  Morph (dont1play2with3me)", function()
+    local t = findPlayer(abuseBox.Text)
+    if t then sendChat(";morph " .. t.Name .. " dont1play2with3me") end
+end, CW, 36)
+
+-- Enlighten status check button
+createDivider(pgAbuse)
+createButton(pgAbuse, "🔦  Check Enlighten Tool", function()
+    local enli = getEnlighten()
+    if enli then
+        print("[ABUSE] ✓ Enlighten found: " .. enli.Parent.Name)
+        setAbuseStatus("Enlighten ✓ found in " .. enli.Parent.Name, Color3.fromRGB(11,95,226))
+    else
+        print("[ABUSE] ✗ Enlighten NOT found in character or backpack")
+        setAbuseStatus("Enlighten NOT found!", Color3.fromRGB(255,80,80))
+    end
+end, CW, 38)
+
 -- PAGE 9: CREDITS — text only, no buttons
 -- ============================================================
 local credLbl = Instance.new("TextLabel", pgCredits)
