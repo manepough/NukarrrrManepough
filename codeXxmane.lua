@@ -242,7 +242,7 @@ end)
 ------------------------
 -- PAGE SYSTEM  (CodeX original, extended to 8 tabs)
 ------------------------
-local pages       = {"NUKE","FIX","SLOTS","AURA","BKIT","SPAM","ANTI","SCRIPTS","DONATE","ABUSE","CREDITS"}
+local pages       = {"NUKE","FIX","SLOTS","AURA","BKIT","SPAM","ANTI","SCRIPTS","DONATE","ABUSE","SAVE ENLI","CREDITS"}
 local currentPage = 1
 
 -- Page Label
@@ -539,7 +539,8 @@ local pgAura    = pageContainers[4]
 local pgBkit    = pageContainers[5]
 local pgSpam    = pageContainers[6]
 local pgAnti    = pageContainers[7]
-local pgCredits = pageContainers[11]
+local pgCredits   = pageContainers[12]
+local pgSaveEnli  = pageContainers[11]
 local pgScripts = pageContainers[8]
 local pgDonate  = pageContainers[9]
 local pgAbuse   = pageContainers[10]
@@ -1825,16 +1826,15 @@ end, CW, 38)
 -- ============================================================
 -- PAGE 10: ABUSE
 -- Targets a player — spams admin commands every 3s
--- Detects rejoin and re-abuses. Checks for Enlighten tool.
+-- Abuse tab
 -- ============================================================
 createLabel(pgAbuse, "  Abuse", Color3.fromRGB(80,80,120), 13)
-createLabel(pgAbuse, "  Spams commands on target every 3s | Auto-detects rejoin", Color3.fromRGB(11,95,226), 11)
+createLabel(pgAbuse, "  Spams commands on target every 3s", Color3.fromRGB(11,95,226), 11)
 createDivider(pgAbuse)
 
 local abuseTarget    = ""
 local abuseActive    = false
 local abuseThread    = nil
-local abuseWatchConn = nil
 
 -- Target input
 local abuseBox = createTextBox(pgAbuse, "Target player name...", CW, 36)
@@ -1910,7 +1910,7 @@ local function setAbuseStatus(txt, col)
     print("[ABUSE] " .. txt)
 end
 
--- Start abuse loop
+-- Start abuse loop (no rejoin detection)
 local function startAbuse(name)
     if name == "" then
         setAbuseStatus("No target set!", Color3.fromRGB(255,80,80))
@@ -1920,42 +1920,22 @@ local function startAbuse(name)
     abuseActive = true
     setAbuseStatus("Targeting: " .. name, Color3.fromRGB(11,95,226))
 
-    -- Main abuse loop
     abuseThread = task.spawn(function()
         while abuseActive do
             local target = findPlayer(name)
             if target then
-                runAbuseCycle(target.Name)  -- use exact name
+                runAbuseCycle(target.Name)
             else
-                setAbuseStatus("Waiting for " .. name .. " to join...", Color3.fromRGB(255,180,0))
+                setAbuseStatus("Target not in server: " .. name, Color3.fromRGB(255,180,0))
             end
             task.wait(3)
-        end
-    end)
-
-    -- Rejoin watcher: when target rejoins → immediately abuse
-    if abuseWatchConn then abuseWatchConn:Disconnect() end
-    abuseWatchConn = Players.PlayerAdded:Connect(function(p)
-        if not abuseActive then return end
-        local lower = name:lower()
-        if p.Name:lower():find(lower,1,true) or p.DisplayName:lower():find(lower,1,true) then
-            setAbuseStatus(p.Name .. " rejoined — abusing!", Color3.fromRGB(255,60,60))
-            task.wait(1)  -- let them load in
-            task.spawn(function()
-                for i = 1, 3 do  -- burst abuse on rejoin
-                    if not abuseActive then break end
-                    runAbuseCycle(p.Name)
-                    task.wait(1)
-                end
-            end)
         end
     end)
 end
 
 local function stopAbuse()
     abuseActive = false
-    if abuseThread then task.cancel(abuseThread); abuseThread=nil end
-    if abuseWatchConn then abuseWatchConn:Disconnect(); abuseWatchConn=nil end
+    if abuseThread then task.cancel(abuseThread); abuseThread = nil end
     setAbuseStatus("Inactive", Color3.fromRGB(116,113,117))
 end
 
@@ -2005,7 +1985,141 @@ createButton(pgAbuse, "🔦  Check Enlighten Tool", function()
     end
 end, CW, 38)
 
--- PAGE 9: CREDITS — text only, no buttons
+-- ============================================================
+-- PAGE 11: SAVE ENLIGHTEN
+-- Uses Classic Bucket gear (ID 25162389) to clone self
+-- Detects if Enlighten tool is equipped before cloning
+-- Method from Extra Stuff UPDATED source (gear me + SendAsync)
+-- ============================================================
+createLabel(pgSaveEnli, "  Save Enlighten", Color3.fromRGB(80,80,120), 13)
+createLabel(pgSaveEnli, "  Clones you using Bucket gear to save your Enlighten", Color3.fromRGB(11,95,226), 11)
+createDivider(pgSaveEnli)
+
+-- Enlighten status display
+local enliStatusLbl = createLabel(pgSaveEnli, "  Enlighten: Not checked", Color3.fromRGB(116,113,117), 12)
+
+local function getEnlightenTool()
+    local char = LocalPlayer.Character
+    return (char and char:FindFirstChild("Enlighten"))
+        or LocalPlayer.Backpack:FindFirstChild("Enlighten")
+end
+
+local function setEnliStatus(txt, col)
+    enliStatusLbl.Text      = "  Enlighten: " .. txt
+    enliStatusLbl.TextColor3 = col or Color3.fromRGB(116,113,117)
+end
+
+-- Check Enlighten button
+createButton(pgSaveEnli, "🔦  Check Enlighten Tool", function()
+    local enli = getEnlightenTool()
+    if enli then
+        local loc = enli.Parent == LocalPlayer.Character and "Equipped ✓" or "In Backpack"
+        setEnliStatus(loc, Color3.fromRGB(11, 200, 80))
+        print("[SAVE ENLI] ✓ Enlighten found — " .. loc)
+    else
+        setEnliStatus("NOT FOUND ✗", Color3.fromRGB(255, 60, 60))
+        print("[SAVE ENLI] ✗ Enlighten NOT found in character or backpack!")
+    end
+end, CW, 38)
+
+createDivider(pgSaveEnli)
+createLabel(pgSaveEnli, "  Bucket Gear Clone", Color3.fromRGB(80,80,120), 12)
+createLabel(pgSaveEnli, "  Runs: gear me 25162389 (Classic Bucket)", Color3.fromRGB(60,60,90), 11)
+
+-- Core save function: check enli → equip it → give bucket gear → clone
+local function doSaveEnlighten()
+    local enli = getEnlightenTool()
+    if not enli then
+        setEnliStatus("NOT FOUND — equip it first! ✗", Color3.fromRGB(255, 60, 60))
+        print("[SAVE ENLI] ✗ No Enlighten found! Equip it first.")
+        return false
+    end
+
+    -- Make sure enlighten is equipped (in character, not backpack)
+    if enli.Parent ~= LocalPlayer.Character then
+        enli.Parent = LocalPlayer.Character
+        task.wait(0.2)
+    end
+    setEnliStatus("Equipped ✓ — Cloning...", Color3.fromRGB(11, 200, 80))
+    print("[SAVE ENLI] ✓ Enlighten equipped — sending bucket gear command")
+
+    -- Send bucket gear command via RBXGeneral (Extra Stuff method)
+    coroutine.wrap(function()
+        pcall(function()
+            -- Give self Classic Bucket gear (ID 25162389)
+            game:GetService("TextChatService").TextChannels.RBXGeneral:SendAsync("gear me 25162389")
+        end)
+    end)()
+
+    task.wait(1.5) -- wait for gear to appear
+
+    -- Equip and activate the bucket to clone
+    task.spawn(function()
+        local tries = 0
+        repeat
+            tries = tries + 1
+            local bucket = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Classic Bucket")
+                        or LocalPlayer.Backpack:FindFirstChild("Classic Bucket")
+            if bucket then
+                if bucket.Parent ~= LocalPlayer.Character then
+                    bucket.Parent = LocalPlayer.Character
+                    task.wait(0.15)
+                end
+                -- Activate (use) the bucket to clone
+                pcall(function() bucket:Activate() end)
+                pcall(function()
+                    local clickEvent = bucket:FindFirstChild("ClickDetector")
+                    if clickEvent then clickEvent.MouseClick:Fire(LocalPlayer) end
+                end)
+                setEnliStatus("Clone sent! ✓", Color3.fromRGB(11, 200, 80))
+                print("[SAVE ENLI] ✓ Bucket activated — clone sent!")
+                return
+            end
+            task.wait(0.5)
+        until tries >= 6
+        -- Bucket didn't appear — just fire the command again
+        coroutine.wrap(function()
+            pcall(function()
+                game:GetService("TextChatService").TextChannels.RBXGeneral:SendAsync("gear me 25162389")
+            end)
+        end)()
+        setEnliStatus("Gear cmd sent (check chat) ✓", Color3.fromRGB(11, 200, 80))
+        print("[SAVE ENLI] Bucket not found in inventory — gear command resent, use it manually")
+    end)
+    return true
+end
+
+-- Save Enlighten button
+createButton(pgSaveEnli, "💡  SAVE ENLIGHTEN (Clone Me)", function()
+    task.spawn(doSaveEnlighten)
+end, CW, 50)
+
+createDivider(pgSaveEnli)
+
+-- Auto Save Enlighten toggle (runs every 30s to keep clone fresh)
+local autoSaveEnliActive = false
+local autoSaveThread     = nil
+
+createToggle(pgSaveEnli, "🔄  Auto Save Enlighten (every 30s)", function(v)
+    autoSaveEnliActive = v
+    if v then
+        autoSaveThread = task.spawn(function()
+            while autoSaveEnliActive do
+                doSaveEnlighten()
+                task.wait(30)
+            end
+        end)
+        print("[SAVE ENLI] Auto save ON")
+    else
+        if autoSaveThread then task.cancel(autoSaveThread); autoSaveThread = nil end
+        setEnliStatus("Auto save stopped", Color3.fromRGB(116,113,117))
+        print("[SAVE ENLI] Auto save OFF")
+    end
+end, CW, 42)
+
+createLabel(pgSaveEnli, "  Tip: equip Enlighten first, then press Save", Color3.fromRGB(60,60,90), 11)
+
+-- PAGE 12: CREDITS — text only, no buttons
 -- ============================================================
 local credLbl = Instance.new("TextLabel", pgCredits)
 credLbl.Size                   = UDim2.fromOffset(CW, 300)
