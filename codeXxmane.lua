@@ -2040,52 +2040,29 @@ local function doSaveEnlighten()
         enli.Parent = LocalPlayer.Character
         task.wait(0.2)
     end
-    setEnliStatus("Equipped ✓ — Cloning...", Color3.fromRGB(11, 200, 80))
-    print("[SAVE ENLI] ✓ The Arkenstone equipped — sending bucket gear command")
+    setEnliStatus("Cloning...", Color3.fromRGB(11, 200, 80))
+    print("[SAVE ENLI] Step 1 — ;clone me")
 
-    -- Send bucket gear command via RBXGeneral (Extra Stuff method)
+    -- Step 1: ;clone me
     coroutine.wrap(function()
         pcall(function()
-            -- Give self Classic Bucket gear (ID 25162389)
-            game:GetService("TextChatService").TextChannels.RBXGeneral:SendAsync("gear me 25162389")
+            game:GetService("TextChatService").TextChannels.RBXGeneral:SendAsync(";clone me")
         end)
     end)()
 
-    task.wait(1.5) -- wait for gear to appear
+    -- Step 2: wait 2 seconds
+    task.wait(2)
 
-    -- Equip and activate the bucket to clone
-    task.spawn(function()
-        local tries = 0
-        repeat
-            tries = tries + 1
-            local bucket = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Classic Bucket")
-                        or LocalPlayer.Backpack:FindFirstChild("Classic Bucket")
-            if bucket then
-                if bucket.Parent ~= LocalPlayer.Character then
-                    bucket.Parent = LocalPlayer.Character
-                    task.wait(0.15)
-                end
-                -- Activate (use) the bucket to clone
-                pcall(function() bucket:Activate() end)
-                pcall(function()
-                    local clickEvent = bucket:FindFirstChild("ClickDetector")
-                    if clickEvent then clickEvent.MouseClick:Fire(LocalPlayer) end
-                end)
-                setEnliStatus("Clone sent! ✓", Color3.fromRGB(11, 200, 80))
-                print("[SAVE ENLI] ✓ Bucket activated — clone sent!")
-                return
-            end
-            task.wait(0.5)
-        until tries >= 6
-        -- Bucket didn't appear — just fire the command again
-        coroutine.wrap(function()
-            pcall(function()
-                game:GetService("TextChatService").TextChannels.RBXGeneral:SendAsync("gear me 25162389")
-            end)
-        end)()
-        setEnliStatus("Gear cmd sent (check chat) ✓", Color3.fromRGB(11, 200, 80))
-        print("[SAVE ENLI] Bucket not found in inventory — gear command resent, use it manually")
-    end)
+    -- Step 3: ;gear me 25162389 (Classic Bucket steal)
+    print("[SAVE ENLI] Step 2 — ;gear me 25162389")
+    coroutine.wrap(function()
+        pcall(function()
+            game:GetService("TextChatService").TextChannels.RBXGeneral:SendAsync(";gear me 25162389")
+        end)
+    end)()
+
+    setEnliStatus("Done ✓ (clone → bucket)", Color3.fromRGB(11, 200, 80))
+    print("[SAVE ENLI] ✓ Done — clone sent, bucket gear given")
     return true
 end
 
