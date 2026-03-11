@@ -2140,15 +2140,13 @@ local STASH_DATA = {
 }
 
 -- Compute stash center (average of all block positions) for TP
-local function getStashCenter()
-    local sum = Vector3.new(0,0,0)
-    for _, v in ipairs(STASH_DATA) do
-        sum = sum + Vector3.new(v.p[1], v.p[2], v.p[3])
-    end
-    return sum / #STASH_DATA
-end
+-- Stash room is the big structure at the end of the JSON
+-- Floor: Y=2447, X~12007, Z~2556 — hardcoded to actual room interior
+local STASH_TP = Vector3.new(12007, 2455, 2556)
 
-local stashBuilding = false
+local stashBuilding  = false
+local stashBuildWait = 0.15  -- default delay between blocks
+
 local stashStatusLbl = createLabel(pgSaveEnli, "  Stash: Idle", Color3.fromRGB(116,113,117), 12)
 
 local function setStashStatus(txt, col)
@@ -2156,7 +2154,12 @@ local function setStashStatus(txt, col)
     stashStatusLbl.TextColor3 = col or Color3.fromRGB(116,113,117)
 end
 
--- Build Stash button — uses same build fire method as Restore Build
+-- Slider: delay between each block (0.1s – 2s)
+createSlider(pgSaveEnli, "Build Delay (sec)", 1, 20, 2, function(v)
+    stashBuildWait = v / 10  -- slider 1-20 → 0.1s-2.0s
+end, CW)
+
+-- Build Stash button
 createButton(pgSaveEnli, "🏗  BUILD STASH", function()
     if stashBuilding then
         print("[STASH] Already building!")
@@ -2192,17 +2195,15 @@ createButton(pgSaveEnli, "🏗  BUILD STASH", function()
                 break
             end
 
-            local pos  = Vector3.new(v.p[1], v.p[2], v.p[3])
-            local size = Vector3.new(v.s[1], v.s[2], v.s[3])
-            local col  = Color3.fromRGB(v.c[1], v.c[2], v.c[3])
+            local pos = Vector3.new(v.p[1], v.p[2], v.p[3])
 
-            -- Teleport near block so build fires correctly (Extra Stuff method)
+            -- Teleport near block so server accepts the build
             pcall(function()
                 local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
                 if hrp then hrp.CFrame = CFrame.new(pos + Vector3.new(0, 6, 0)) end
             end)
 
-            -- Fire build event (origevent first, fallback to Script.Event)
+            -- Fire build event (origevent first, fallback Script.Event)
             pcall(function()
                 local ev = et:FindFirstChild("origevent")
                 if ev then
@@ -2214,7 +2215,7 @@ createButton(pgSaveEnli, "🏗  BUILD STASH", function()
 
             setStashStatus("Building... (" .. i .. "/" .. #STASH_DATA .. ")", Color3.fromRGB(255,180,0))
             print("[STASH] Block " .. i .. "/" .. #STASH_DATA .. " at " .. tostring(pos))
-            task.wait(0.15)
+            task.wait(stashBuildWait)
         end
 
         stashBuilding = false
@@ -2223,14 +2224,13 @@ createButton(pgSaveEnli, "🏗  BUILD STASH", function()
     end)
 end, CW, 46)
 
--- TP to Stash button
+-- TP to Stash — goes to actual room interior (X=12007, Y=2455, Z=2556)
 createButton(pgSaveEnli, "📍  TP TO STASH", function()
-    local center = getStashCenter()
     local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
     if hrp then
-        hrp.CFrame = CFrame.new(center + Vector3.new(0, 5, 0))
-        print("[STASH] Teleported to stash center: " .. tostring(center))
-        setStashStatus("Teleported ✓", Color3.fromRGB(11,200,80))
+        hrp.CFrame = CFrame.new(STASH_TP)
+        setStashStatus("Teleported ✓ → " .. tostring(STASH_TP), Color3.fromRGB(11,200,80))
+        print("[STASH] Teleported to stash: " .. tostring(STASH_TP))
     else
         print("[STASH] No character found")
     end
