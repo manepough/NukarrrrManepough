@@ -1738,15 +1738,16 @@ end)
 -- ============================================================
 -- ============================================================
 -- PAGE 9: AUTO DONATE
--- Spams ;donate <player> <yourtime> every 5 seconds
+-- Spams ;donate <player> <yourtime> — interval adjustable
 -- ============================================================
 createLabel(pgDonate, "  Auto Donate", Color3.fromRGB(80,80,120), 13)
-createLabel(pgDonate, "  Spams ;donate every 5s using your full time", Color3.fromRGB(11,95,226), 11)
+createLabel(pgDonate, "  Spams ;donate at your chosen interval", Color3.fromRGB(11,95,226), 11)
 createDivider(pgDonate)
 
 local donateTarget    = ""
 local donateActive    = false
 local donateThread    = nil
+local donateInterval  = 5  -- default 5s
 
 -- Target name input
 local donateBox = createTextBox(pgDonate, "Player name to donate to...", CW, 36)
@@ -1754,6 +1755,11 @@ donateBox.ClearTextOnFocus = false
 donateBox:GetPropertyChangedSignal("Text"):Connect(function()
     donateTarget = donateBox.Text
 end)
+
+-- Interval slider (5s – 100s)
+createSlider(pgDonate, "Interval (sec)", 5, 100, 5, function(v)
+    donateInterval = v
+end, CW)
 
 -- Get my current time stat (checks common stat names)
 local function getMyTime()
@@ -1801,7 +1807,7 @@ createToggle(pgDonate, "💸  Auto Donate ON/OFF", function(v)
                 else
                     print("[DONATE] Could not read your time stat")
                 end
-                task.wait(5)
+                task.wait(donateInterval)
             end
         end)
     else
@@ -1825,16 +1831,17 @@ end, CW, 38)
 
 -- ============================================================
 -- PAGE 10: ABUSE
--- Targets a player — spams admin commands every 3s
+-- Targets a player — spams admin commands at chosen interval
 -- Abuse tab
 -- ============================================================
 createLabel(pgAbuse, "  Abuse", Color3.fromRGB(80,80,120), 13)
-createLabel(pgAbuse, "  Spams commands on target every 3s", Color3.fromRGB(11,95,226), 11)
+createLabel(pgAbuse, "  Spams commands on target at chosen interval", Color3.fromRGB(11,95,226), 11)
 createDivider(pgAbuse)
 
 local abuseTarget    = ""
 local abuseActive    = false
 local abuseThread    = nil
+local abuseInterval  = 3  -- default 3s
 
 -- Target input
 local abuseBox = createTextBox(pgAbuse, "Target player name...", CW, 36)
@@ -1842,6 +1849,11 @@ abuseBox.ClearTextOnFocus = false
 abuseBox:GetPropertyChangedSignal("Text"):Connect(function()
     abuseTarget = abuseBox.Text
 end)
+
+-- Interval slider (1s – 10s)
+createSlider(pgAbuse, "Interval (sec)", 1, 10, 3, function(v)
+    abuseInterval = v
+end, CW)
 
 -- Find player by partial name
 local function findPlayer(name)
@@ -1928,7 +1940,7 @@ local function startAbuse(name)
             else
                 setAbuseStatus("Target not in server: " .. name, Color3.fromRGB(255,180,0))
             end
-            task.wait(3)
+            task.wait(abuseInterval)
         end
     end)
 end
@@ -2095,6 +2107,134 @@ createToggle(pgSaveEnli, "🔄  Auto Save Arkenstone (every 30s)", function(v)
 end, CW, 42)
 
 createLabel(pgSaveEnli, "  Tip: equip The Arkenstone first, then press Save", Color3.fromRGB(60,60,90), 11)
+
+createDivider(pgSaveEnli)
+createLabel(pgSaveEnli, "  Enlighten Stash", Color3.fromRGB(80,80,120), 13)
+createLabel(pgSaveEnli, "  Builds your secret stash at saved coordinates", Color3.fromRGB(11,95,226), 11)
+
+-- Stash JSON data (embedded from ENLIGHTEN STASH.json)
+local STASH_DATA = {
+    {a=true,p={-1015.5,12.5,-83.5},c={192,192,192},s={1,1,1},m="plastic",sp={},o="Plastic",cc=true},
+    {a=true,p={-1020.5,11.5,-82.5},c={192,192,192},s={1,1,1},m="plastic",sp={},o="Plastic",cc=true},
+    {a=true,p={-1021.5,11.5,-87.5},c={192,192,192},s={1,1,1},m="plastic",sp={},o="Plastic",cc=true},
+    {a=true,p={-1021.5,15.5,-93.5},c={192,192,192},s={1,1,1},m="plastic",sp={},o="Plastic",cc=true},
+    {a=true,p={-1020.5,20.5,-100.5},c={192,192,192},s={1,1,1},m="plastic",sp={},o="Plastic",cc=true},
+    {a=true,p={-1020.5,25.5,-106.5},c={192,192,192},s={1,1,1},m="plastic",sp={},o="Plastic",cc=true},
+    {a=true,p={-1020.5,25.5,-107.5},c={192,192,192},s={1,1,1},m="plastic",sp={},o="Plastic",cc=true},
+    {a=true,p={-1015.5,12.5,-82.5},c={192,192,192},s={1,1,1},m="plastic",sp={},o="Plastic",cc=true},
+    {a=true,p={-1015.5,13.5,-83.5},c={192,192,192},s={1,1,1},m="plastic",sp={},o="Plastic",cc=true},
+    {a=true,p={-1014.5,12.5,-83.5},c={192,192,192},s={1,1,1},m="plastic",sp={},o="Plastic",cc=true},
+    {a=true,p={903.5,132.5,713.5},c={192,192,192},s={1,1,1},m="plastic",sp={},o="Plastic",cc=true},
+    {a=true,p={1192.5,106.5,869.5},c={192,192,192},s={1,1,1},m="plastic",sp={},o="Plastic",cc=true},
+    {a=true,p={1204.5,109.5,873.5},c={192,192,192},s={1,1,1},m="plastic",sp={},o="Plastic",cc=true},
+    {a=true,p={10204.5,1984.5,2431.5},c={192,192,192},s={1,1,1},m="plastic",sp={},o="Plastic",cc=true},
+    {a=true,p={11995.5,2447.5,2542.5},c={192,192,192},s={12,1,14},m="plastic",sp={},o="Plastic",cc=true},
+    {a=true,p={12007.5,2447.5,2542.5},c={192,192,192},s={12,1,14},m="plastic",sp={},o="Plastic",cc=true},
+    {a=true,p={11995.5,2447.5,2556.5},c={192,192,192},s={12,1,14},m="plastic",sp={},o="Plastic",cc=true},
+    {a=true,p={12007.5,2447.5,2556.5},c={192,192,192},s={12,1,14},m="plastic",sp={},o="Plastic",cc=true},
+    {a=true,p={11995.5,2448.5,2542.5},c={192,192,192},s={1,8,28},m="plastic",sp={},o="Plastic",cc=true},
+    {a=true,p={12018.5,2448.5,2542.5},c={192,192,192},s={1,8,28},m="plastic",sp={},o="Plastic",cc=true},
+    {a=true,p={11996.5,2448.5,2569.5},c={192,192,192},s={22,8,1},m="plastic",sp={},o="Plastic",cc=true},
+    {a=true,p={11996.5,2448.5,2542.5},c={192,192,192},s={22,8,1},m="plastic",sp={},o="Plastic",cc=true},
+    {a=true,p={11981.5,2455.5,2542.5},c={192,192,192},s={14,1,28},m="plastic",sp={},o="Plastic",cc=true},
+}
+
+-- Compute stash center (average of all block positions) for TP
+local function getStashCenter()
+    local sum = Vector3.new(0,0,0)
+    for _, v in ipairs(STASH_DATA) do
+        sum = sum + Vector3.new(v.p[1], v.p[2], v.p[3])
+    end
+    return sum / #STASH_DATA
+end
+
+local stashBuilding = false
+local stashStatusLbl = createLabel(pgSaveEnli, "  Stash: Idle", Color3.fromRGB(116,113,117), 12)
+
+local function setStashStatus(txt, col)
+    stashStatusLbl.Text       = "  Stash: " .. txt
+    stashStatusLbl.TextColor3 = col or Color3.fromRGB(116,113,117)
+end
+
+-- Build Stash button — uses same build fire method as Restore Build
+createButton(pgSaveEnli, "🏗  BUILD STASH", function()
+    if stashBuilding then
+        print("[STASH] Already building!")
+        return
+    end
+    task.spawn(function()
+        stashBuilding = true
+        setStashStatus("Building... (0/" .. #STASH_DATA .. ")", Color3.fromRGB(255,180,0))
+
+        local function equipBuild()
+            local char = LocalPlayer.Character
+            local tool = (char and char:FindFirstChild("Build"))
+                      or LocalPlayer.Backpack:FindFirstChild("Build")
+            if not tool then return nil end
+            if tool.Parent ~= LocalPlayer.Character then
+                tool.Parent = LocalPlayer.Character
+                task.wait(0.1)
+            end
+            return LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Build")
+        end
+
+        local et = equipBuild()
+        if not et then
+            setStashStatus("Build tool not found!", Color3.fromRGB(255,60,60))
+            stashBuilding = false
+            return
+        end
+
+        for i, v in ipairs(STASH_DATA) do
+            et = equipBuild()
+            if not et then
+                setStashStatus("Build tool lost at block " .. i, Color3.fromRGB(255,60,60))
+                break
+            end
+
+            local pos  = Vector3.new(v.p[1], v.p[2], v.p[3])
+            local size = Vector3.new(v.s[1], v.s[2], v.s[3])
+            local col  = Color3.fromRGB(v.c[1], v.c[2], v.c[3])
+
+            -- Teleport near block so build fires correctly (Extra Stuff method)
+            pcall(function()
+                local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+                if hrp then hrp.CFrame = CFrame.new(pos + Vector3.new(0, 6, 0)) end
+            end)
+
+            -- Fire build event (origevent first, fallback to Script.Event)
+            pcall(function()
+                local ev = et:FindFirstChild("origevent")
+                if ev then
+                    ev:Invoke(workspace.Terrain, Enum.NormalId.Top, pos, "detailed")
+                else
+                    et.Script.Event:FireServer(workspace.Terrain, Enum.NormalId.Top, pos, "detailed")
+                end
+            end)
+
+            setStashStatus("Building... (" .. i .. "/" .. #STASH_DATA .. ")", Color3.fromRGB(255,180,0))
+            print("[STASH] Block " .. i .. "/" .. #STASH_DATA .. " at " .. tostring(pos))
+            task.wait(0.15)
+        end
+
+        stashBuilding = false
+        setStashStatus("Done ✓ (" .. #STASH_DATA .. " blocks)", Color3.fromRGB(11,200,80))
+        print("[STASH] ✓ Build complete!")
+    end)
+end, CW, 46)
+
+-- TP to Stash button
+createButton(pgSaveEnli, "📍  TP TO STASH", function()
+    local center = getStashCenter()
+    local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+    if hrp then
+        hrp.CFrame = CFrame.new(center + Vector3.new(0, 5, 0))
+        print("[STASH] Teleported to stash center: " .. tostring(center))
+        setStashStatus("Teleported ✓", Color3.fromRGB(11,200,80))
+    else
+        print("[STASH] No character found")
+    end
+end, CW, 42)
 
 -- PAGE 12: CREDITS — text only, no buttons
 -- ============================================================
