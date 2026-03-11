@@ -1855,11 +1855,11 @@ local function findPlayer(name)
     return nil
 end
 
--- Check if we have Enlighten tool
+-- Check if we have The Arkenstone tool
 local function getEnlighten()
     local char = LocalPlayer.Character
-    local tool = (char and char:FindFirstChild("Enlighten"))
-             or LocalPlayer.Backpack:FindFirstChild("Enlighten")
+    local tool = (char and char:FindFirstChild("The Arkenstone"))
+             or LocalPlayer.Backpack:FindFirstChild("The Arkenstone")
     return tool
 end
 
@@ -1870,7 +1870,7 @@ local function equipEnlighten()
         tool.Parent = LocalPlayer.Character
         task.wait(0.15)
     end
-    return LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Enlighten") ~= nil
+    return LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("The Arkenstone") ~= nil
 end
 
 -- The abuse sequence for one cycle
@@ -1886,10 +1886,10 @@ local function runAbuseCycle(targetName)
     -- Check Enlighten
     local enli = getEnlighten()
     if not enli then
-        print("[ABUSE] ⚠ Enlighten tool not found in backpack! Commands may not work.")
+        print("[ABUSE] ⚠ The Arkenstone tool not found in backpack! Commands may not work.")
     else
         equipEnlighten()
-        print("[ABUSE] ✓ Enlighten equipped")
+        print("[ABUSE] ✓ The Arkenstone equipped")
     end
 
     for _, cmd in ipairs(abuseCmds) do
@@ -1974,51 +1974,51 @@ end, CW, 36)
 
 -- Enlighten status check button
 createDivider(pgAbuse)
-createButton(pgAbuse, "🔦  Check Enlighten Tool", function()
+createButton(pgAbuse, "🔦  Check Arkenstone Tool", function()
     local enli = getEnlighten()
     if enli then
-        print("[ABUSE] ✓ Enlighten found: " .. enli.Parent.Name)
-        setAbuseStatus("Enlighten ✓ found in " .. enli.Parent.Name, Color3.fromRGB(11,95,226))
+        print("[ABUSE] ✓ The Arkenstone found: " .. enli.Parent.Name)
+        setAbuseStatus("Arkenstone ✓ found in " .. enli.Parent.Name, Color3.fromRGB(11,95,226))
     else
-        print("[ABUSE] ✗ Enlighten NOT found in character or backpack")
-        setAbuseStatus("Enlighten NOT found!", Color3.fromRGB(255,80,80))
+        print("[ABUSE] ✗ The Arkenstone NOT found in character or backpack")
+        setAbuseStatus("The Arkenstone NOT found!", Color3.fromRGB(255,80,80))
     end
 end, CW, 38)
 
 -- ============================================================
 -- PAGE 11: SAVE ENLIGHTEN
 -- Uses Classic Bucket gear (ID 25162389) to clone self
--- Detects if Enlighten tool is equipped before cloning
+-- Detects if The Arkenstone tool is equipped before cloning
 -- Method from Extra Stuff UPDATED source (gear me + SendAsync)
 -- ============================================================
-createLabel(pgSaveEnli, "  Save Enlighten", Color3.fromRGB(80,80,120), 13)
-createLabel(pgSaveEnli, "  Clones you using Bucket gear to save your Enlighten", Color3.fromRGB(11,95,226), 11)
+createLabel(pgSaveEnli, "  Save Arkenstone", Color3.fromRGB(80,80,120), 13)
+createLabel(pgSaveEnli, "  Clones you using Bucket gear to save your Arkenstone", Color3.fromRGB(11,95,226), 11)
 createDivider(pgSaveEnli)
 
 -- Enlighten status display
-local enliStatusLbl = createLabel(pgSaveEnli, "  Enlighten: Not checked", Color3.fromRGB(116,113,117), 12)
+local enliStatusLbl = createLabel(pgSaveEnli, "  Arkenstone: Not checked", Color3.fromRGB(116,113,117), 12)
 
 local function getEnlightenTool()
     local char = LocalPlayer.Character
-    return (char and char:FindFirstChild("Enlighten"))
-        or LocalPlayer.Backpack:FindFirstChild("Enlighten")
+    return (char and char:FindFirstChild("The Arkenstone"))
+        or LocalPlayer.Backpack:FindFirstChild("The Arkenstone")
 end
 
 local function setEnliStatus(txt, col)
-    enliStatusLbl.Text      = "  Enlighten: " .. txt
+    enliStatusLbl.Text      = "  Arkenstone: " .. txt
     enliStatusLbl.TextColor3 = col or Color3.fromRGB(116,113,117)
 end
 
 -- Check Enlighten button
-createButton(pgSaveEnli, "🔦  Check Enlighten Tool", function()
+createButton(pgSaveEnli, "🔦  Check Arkenstone Tool", function()
     local enli = getEnlightenTool()
     if enli then
         local loc = enli.Parent == LocalPlayer.Character and "Equipped ✓" or "In Backpack"
         setEnliStatus(loc, Color3.fromRGB(11, 200, 80))
-        print("[SAVE ENLI] ✓ Enlighten found — " .. loc)
+        print("[SAVE ENLI] ✓ The Arkenstone found — " .. loc)
     else
         setEnliStatus("NOT FOUND ✗", Color3.fromRGB(255, 60, 60))
-        print("[SAVE ENLI] ✗ Enlighten NOT found in character or backpack!")
+        print("[SAVE ENLI] ✗ The Arkenstone NOT found in character or backpack!")
     end
 end, CW, 38)
 
@@ -2030,8 +2030,8 @@ createLabel(pgSaveEnli, "  Runs: gear me 25162389 (Classic Bucket)", Color3.from
 local function doSaveEnlighten()
     local enli = getEnlightenTool()
     if not enli then
-        setEnliStatus("NOT FOUND — equip it first! ✗", Color3.fromRGB(255, 60, 60))
-        print("[SAVE ENLI] ✗ No Enlighten found! Equip it first.")
+        setEnliStatus("NOT FOUND — equip The Arkenstone first! ✗", Color3.fromRGB(255, 60, 60))
+        print("[SAVE ENLI] ✗ No The Arkenstone found! Equip it first.")
         return false
     end
 
@@ -2041,7 +2041,7 @@ local function doSaveEnlighten()
         task.wait(0.2)
     end
     setEnliStatus("Equipped ✓ — Cloning...", Color3.fromRGB(11, 200, 80))
-    print("[SAVE ENLI] ✓ Enlighten equipped — sending bucket gear command")
+    print("[SAVE ENLI] ✓ The Arkenstone equipped — sending bucket gear command")
 
     -- Send bucket gear command via RBXGeneral (Extra Stuff method)
     coroutine.wrap(function()
@@ -2089,18 +2089,18 @@ local function doSaveEnlighten()
     return true
 end
 
--- Save Enlighten button
+-- Save Arkenstone button
 createButton(pgSaveEnli, "💡  SAVE ENLIGHTEN (Clone Me)", function()
     task.spawn(doSaveEnlighten)
 end, CW, 50)
 
 createDivider(pgSaveEnli)
 
--- Auto Save Enlighten toggle (runs every 30s to keep clone fresh)
+-- Auto Save Arkenstone toggle (runs every 30s to keep clone fresh)
 local autoSaveEnliActive = false
 local autoSaveThread     = nil
 
-createToggle(pgSaveEnli, "🔄  Auto Save Enlighten (every 30s)", function(v)
+createToggle(pgSaveEnli, "🔄  Auto Save Arkenstone (every 30s)", function(v)
     autoSaveEnliActive = v
     if v then
         autoSaveThread = task.spawn(function()
@@ -2117,7 +2117,7 @@ createToggle(pgSaveEnli, "🔄  Auto Save Enlighten (every 30s)", function(v)
     end
 end, CW, 42)
 
-createLabel(pgSaveEnli, "  Tip: equip Enlighten first, then press Save", Color3.fromRGB(60,60,90), 11)
+createLabel(pgSaveEnli, "  Tip: equip The Arkenstone first, then press Save", Color3.fromRGB(60,60,90), 11)
 
 -- PAGE 12: CREDITS — text only, no buttons
 -- ============================================================
