@@ -1773,25 +1773,13 @@ local function getMyTime()
     return nil
 end
 
--- Send chat message FE
-local function sendChat(msg)
-    local StarterGui = game:GetService("StarterGui")
-    -- Try bubble chat fire
-    pcall(function()
-        game:GetService("ReplicatedStorage"):FindFirstChild("DefaultChatSystemChatEvents")
-            :FindFirstChild("SayMessageRequest"):FireServer(msg, "All")
-    end)
-    -- Fallback: use game's chat remote
-    pcall(function()
-        local chatService = game:GetService("Chat")
-        chatService:Chat(LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Head"), msg)
-    end)
-    -- Universal fallback
-    pcall(function()
-        local rs = game:GetService("ReplicatedStorage")
-        local chatEvent = rs:FindFirstChild("SayMessage") or rs:FindFirstChild("ChatEvent")
-        if chatEvent then chatEvent:FireServer(msg, "All") end
-    end)
+-- Send chat using TextChatService (from Extra Stuff source)
+local function sendChat(text)
+    coroutine.wrap(function()
+        pcall(function()
+            game:GetService("TextChatService").TextChannels.RBXGeneral:SendAsync(text)
+        end)
+    end)()
 end
 
 createToggle(pgDonate, "💸  Auto Donate ON/OFF", function(v)
