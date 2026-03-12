@@ -1389,124 +1389,187 @@ end, CW, 46)
 createDivider(pgAnti)
 
 -- ============================================================
--- ANTI GLITCH (VPLI method)
--- Tracks Y delta per frame. If Y spikes > 120 studs in one
--- frame without legit jump velocity = glitch tp → restore.
+-- ANTI GLITCH (VPLI exact method)
+-- RenderStepped: if |Y| > 10000 → pivot back, zero all velocities
 -- ============================================================
-local lastSafePos = nil
-local prevY       = nil
+local vpliLastSafe  = nil
+local vpliGlitchConn = nil
 
-createToggle(pgAnti, "🌀  Anti Glitch", function(v)
+createToggle(pgAnti, "🌀  Anti Glitch (VPLI)", function(v)
     if v then
-        addConn("glitch", RunService.Heartbeat:Connect(function()
-            local char = LocalPlayer.Character; if not char then return end
-            local hrp  = char:FindFirstChild("HumanoidRootPart"); if not hrp then return end
-            local hum  = char:FindFirstChild("Humanoid"); if not hum then return end
-            local pos  = hrp.Position
-            local vel  = hrp.AssemblyLinearVelocity
-            -- Save safe pos when grounded
-            if hum.FloorMaterial ~= Enum.Material.Air and pos.Y > -100 and pos.Y < 150 then
-                lastSafePos = pos
-            end
-            -- NaN detection
-            local nan = pos.X ~= pos.X or pos.Y ~= pos.Y or pos.Z ~= pos.Z
-            -- Sky glitch: Y jumped > 120 but vertical velocity didn't cause it
-            local skyTp = prevY ~= nil and (pos.Y - prevY) > 120 and math.abs(vel.Y) < 50
-            if (nan or skyTp) and lastSafePos then
-                hrp.AssemblyLinearVelocity  = Vector3.zero
-                hrp.AssemblyAngularVelocity = Vector3.zero
-                hrp.CFrame = CFrame.new(lastSafePos + Vector3.new(0, 4, 0))
-                print("[ANTI GLITCH] Sky glitch caught — restored to safe pos")
-            end
-            prevY = pos.Y
-        end))
-    else
-        killConn("glitch"); lastSafePos=nil; prevY=nil
-    end
-end, CW, 46)
-
--- ============================================================
--- ANTI FREEZE (VPLI method)
--- Watches if WalkSpeed is externally zeroed or character
--- stops responding to MoveDirection. Restores or resets.
--- ============================================================
-local NORMAL_WS   = 16
-local NORMAL_JP   = 50
-local frozenTimer = 0
-
-createToggle(pgAnti, "🧊  Anti Freeze", function(v)
-    if v then
-        addConn("freeze", RunService.Heartbeat:Connect(function(dt)
-            local char = LocalPlayer.Character; if not char then return end
-            local hum  = char:FindFirstChild("Humanoid"); if not hum then return end
-            local hrp  = char:FindFirstChild("HumanoidRootPart"); if not hrp then return end
-            -- Restore stolen WalkSpeed
-            if hum.WalkSpeed < 1 then
-                hum.WalkSpeed = NORMAL_WS
-                hum.JumpPower = NORMAL_JP
-            end
-            -- Detect hard freeze: trying to move but not moving for 4s
-            local wantMove = hum.MoveDirection.Magnitude > 0.1
-            local isMoving = hrp.AssemblyLinearVelocity.Magnitude > 0.4
-            if wantMove and not isMoving then
-                frozenTimer = frozenTimer + dt
-                if frozenTimer > 4 then
-                    frozenTimer = 0
-                    print("[ANTI FREEZE] Frozen — resetting character")
-                    LocalPlayer:LoadCharacter()
+        vpliGlitchConn = RunService.RenderStepped:Connect(function()
+            local char = LocalPlayer.Character
+            local hrp  = char and char:FindFirstChild("HumanoidRootPart")
+            if hrp then
+                if math.abs(hrp.Position.Y) < 10000 then
+                    vpliLastSafe = hrp.CFrame
                 end
-            else
-                frozenTimer = 0
-            end
-        end))
-    else
-        killConn("freeze"); frozenTimer=0
-    end
-end, CW, 46)
-
--- ============================================================
--- ANTI BLIND (VPLI method)
--- Hook PlayerGui.ChildAdded — destroy black fullscreen frames
--- instantly on inject. Also locks Lighting ColorCorrection.
--- ============================================================
-local function nukeBlind(obj)
-    if not obj:IsA("ScreenGui") or obj.Name == "SimpleHub" then return end
-    task.defer(function()
-        if not obj or not obj.Parent then return end
-        for _, d in ipairs(obj:GetDescendants()) do
-            if d:IsA("Frame") or d:IsA("ImageLabel") then
-                local c = d.BackgroundColor3
-                if c.R < 0.08 and c.G < 0.08 and c.B < 0.08
-                and d.Size == UDim2.fromScale(1,1)
-                and d.BackgroundTransparency < 0.5 then
-                    d.BackgroundTransparency = 1
-                    print("[ANTI BLIND] Nuked black overlay in "..obj.Name)
+                if math.abs(hrp.Position.Y) > 10000 and vpliLastSafe then
+                    hrp.AssemblyLinearVelocity = Vector3.zero
+                    char:PivotTo(vpliLastSafe)
+                    for _, part in ipairs(char:GetDescendants()) do
+                        if part:IsA("BasePart") then
+                            part.Velocity    = Vector3.zero
+                            part.RotVelocity = Vector3.zero
+                        end
+                    end
+                    print("[ANTI GLITCH] Out of bounds — pivoted back")
                 end
             end
-        end
-    end)
-end
-
-createToggle(pgAnti, "🚫  Anti Blind", function(v)
-    if v then
-        addConn("blindAdd", LocalPlayer.PlayerGui.ChildAdded:Connect(nukeBlind))
-        addConn("blindHB", RunService.Heartbeat:Connect(function()
-            if math.random(1,60)~=1 then return end
-            for _, e in ipairs(game:GetService("Lighting"):GetChildren()) do
-                if e:IsA("ColorCorrectionEffect") and e.Brightness < -0.2 then e.Brightness=0 end
-                if e:IsA("BlurEffect") then e.Size=0 end
-            end
-        end))
-        for _, g in ipairs(LocalPlayer.PlayerGui:GetChildren()) do nukeBlind(g) end
+        end)
     else
-        killConn("blindAdd"); killConn("blindHB")
+        if vpliGlitchConn then vpliGlitchConn:Disconnect(); vpliGlitchConn=nil end
+        vpliLastSafe = nil
     end
 end, CW, 46)
 
 -- ============================================================
--- ANTI MORPH (VPLI method)
--- Records HumanoidDescription on spawn. If body colors change
--- drastically (external morph applied) → reset character.
+-- ANTI FREEZE (VPLI exact method)
+-- Loop 0.1s: if Hielo instance exists in character → set health=0
+-- (kills to break freeze state — VPLI's confirmed working method)
+-- ============================================================
+local vpliFreezeActive = false
+
+createToggle(pgAnti, "🧊  Anti Freeze (VPLI)", function(v)
+    vpliFreezeActive = v
+    if v then
+        task.spawn(function()
+            while vpliFreezeActive do
+                task.wait(0.1)
+                local char = LocalPlayer.Character
+                if char and char:FindFirstChild("Hielo", true) then
+                    local hum = char:FindFirstChildOfClass("Humanoid")
+                    if hum then hum.Health = 0 end
+                    print("[ANTI FREEZE] Hielo detected — broke freeze")
+                end
+            end
+        end)
+    end
+end, CW, 46)
+
+-- ============================================================
+-- ANTI BLIND (VPLI exact method)
+-- Loop 0.1s: destroy PlayerGui child named "Blind"
+-- ============================================================
+local vpliBlindActive = false
+
+createToggle(pgAnti, "🚫  Anti Blind (VPLI)", function(v)
+    vpliBlindActive = v
+    if v then
+        task.spawn(function()
+            while vpliBlindActive do
+                task.wait(0.1)
+                local playerGui = LocalPlayer:FindFirstChild("PlayerGui")
+                if playerGui and playerGui:FindFirstChild("Blind") then
+                    playerGui.Blind:Destroy()
+                    print("[ANTI BLIND] Destroyed Blind gui")
+                end
+            end
+        end)
+    end
+end, CW, 46)
+
+-- ============================================================
+-- ANTI MYOPIC (VPLI exact method)
+-- RenderStepped: game.Lighting.Blur.Enabled = false
+-- ============================================================
+local vpliMyopicConn = nil
+
+createToggle(pgAnti, "👓  Anti Myopic (VPLI)", function(v)
+    if v then
+        vpliMyopicConn = RunService.RenderStepped:Connect(function()
+            if game.Lighting then
+                game.Lighting.Blur.Enabled = false
+            end
+        end)
+    else
+        if vpliMyopicConn then vpliMyopicConn:Disconnect(); vpliMyopicConn=nil end
+    end
+end, CW, 46)
+
+-- ============================================================
+-- ANTI FOG (VPLI — new toggle not in old script)
+-- RenderStepped: Lighting.Fog.Density = 0
+-- ============================================================
+local vpliFogConn = nil
+
+createToggle(pgAnti, "🌫  Anti Fog (VPLI)", function(v)
+    if v then
+        vpliFogConn = RunService.RenderStepped:Connect(function()
+            if game.Lighting and game.Lighting:FindFirstChild("Fog") then
+                game.Lighting.Fog.Density = 0
+            end
+        end)
+    else
+        if vpliFogConn then vpliFogConn:Disconnect(); vpliFogConn=nil end
+    end
+end, CW, 46)
+
+-- ============================================================
+-- ANTI COLORLESS (VPLI — new toggle not in old script)
+-- RenderStepped: game.Lighting.RGB.Enabled = false
+-- ============================================================
+local vpliColorConn = nil
+
+createToggle(pgAnti, "🎨  Anti Colorless (VPLI)", function(v)
+    if v then
+        vpliColorConn = RunService.RenderStepped:Connect(function()
+            if game.Lighting then
+                pcall(function() game.Lighting.RGB.Enabled = false end)
+            end
+        end)
+    else
+        if vpliColorConn then vpliColorConn:Disconnect(); vpliColorConn=nil end
+    end
+end, CW, 46)
+
+-- ============================================================
+-- ANTI CRASH (VPLI — new, not in old script)
+-- Watches backpack item count. If ≥ threshold → clears backpack
+-- to prevent inventory crash. Threshold adjustable via textbox.
+-- ============================================================
+local vpliCrashThreshold = 11
+local vpliCrashActive    = false
+
+createLabel(pgAnti, "  Anti Crash threshold (default 11)", Color3.fromRGB(80,80,120), 11)
+local crashThreshBox = createTextBox(pgAnti, "11", CW, 32)
+crashThreshBox.ClearTextOnFocus = false
+crashThreshBox:GetPropertyChangedSignal("Text"):Connect(function()
+    local n = tonumber(crashThreshBox.Text)
+    if n and n > 0 then vpliCrashThreshold = n end
+end)
+
+createToggle(pgAnti, "💥  Anti Crash (VPLI)", function(v)
+    vpliCrashActive = v
+    if v then
+        coroutine.wrap(function()
+            while vpliCrashActive do
+                local backpack = LocalPlayer:FindFirstChild("Backpack")
+                if backpack and #backpack:GetChildren() >= vpliCrashThreshold then
+                    -- Disable backpack GUI temporarily
+                    local bpGui = LocalPlayer.PlayerGui:FindFirstChild("Backpack")
+                    if bpGui then bpGui.Enabled = false end
+                    -- Clear all items
+                    for _, item in ipairs(backpack:GetChildren()) do item:Destroy() end
+                    print("[ANTI CRASH] Inventory cleared (was ≥ " .. vpliCrashThreshold .. ")")
+                    -- Wait until safe count restored
+                    local safeCount = math.max(1, math.floor(vpliCrashThreshold * 2 / 3))
+                    repeat task.wait(0.2)
+                    until not vpliCrashActive or #backpack:GetChildren() >= safeCount
+                    -- Re-enable backpack GUI
+                    local bpGui2 = vpliCrashActive and LocalPlayer.PlayerGui:FindFirstChild("Backpack")
+                    if bpGui2 then bpGui2.Enabled = true end
+                end
+                task.wait(0.1)
+            end
+        end)()
+    end
+end, CW, 46)
+
+createDivider(pgAnti)
+
+-- ============================================================
+-- ANTI MORPH (original — kept)
 -- ============================================================
 local savedDesc = nil
 
@@ -1540,97 +1603,55 @@ createToggle(pgAnti, "👤  Anti Morph", function(v)
 end, CW, 46)
 
 -- ============================================================
--- ANTI VAMPIRE SWORD (VPLI method)
--- Intercept PlayerGui.ChildAdded — if new ScreenGui appears
--- with a fullscreen ImageLabel/Frame = vampire screen break.
--- Destroy it instantly + restore backpack/CoreGui.
+-- FIX VAMPIRE SWORD (VPLI best method — button)
+-- Restore camera + re-enable Backpack CoreGui
 -- ============================================================
-local SGS = game:GetService("StarterGui")
-local function restoreCore()
-    pcall(function() SGS:SetCoreGuiEnabled(Enum.CoreGuiType.Backpack, true) end)
-    pcall(function() SGS:SetCoreGuiEnabled(Enum.CoreGuiType.All, true) end)
-end
-local function isVampGui(g)
-    if not g:IsA("ScreenGui") or g.Name=="SimpleHub" then return false end
-    for _, d in ipairs(g:GetDescendants()) do
-        if (d:IsA("ImageLabel") or d:IsA("ImageButton") or d:IsA("Frame"))
-        and d.Size == UDim2.fromScale(1,1) then return true end
+createButton(pgAnti, "🧛  Fix Vampire Sword (VPLI)", function()
+    local camera = workspace.CurrentCamera
+    local SGS    = game:GetService("StarterGui")
+    local function restoreCamera()
+        repeat task.wait() until LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid")
+        camera.CameraType    = Enum.CameraType.Custom
+        camera.CameraSubject = LocalPlayer.Character:FindFirstChild("Humanoid")
+        pcall(function() SGS:SetCoreGuiEnabled(Enum.CoreGuiType.Backpack, true) end)
     end
-    return false
-end
-
-createToggle(pgAnti, "🧛  Anti Vampire Sword", function(v)
-    if v then
-        restoreCore()
-        addConn("vamp", LocalPlayer.PlayerGui.ChildAdded:Connect(function(child)
-            task.wait(0.02)
-            if isVampGui(child) then
-                child:Destroy(); restoreCore()
-                print("[ANTI VAMPIRE] Blocked: "..child.Name)
-            end
-        end))
-        addConn("vampHB", RunService.Heartbeat:Connect(function()
-            if math.random(1,120)==1 then restoreCore() end
-        end))
-    else
-        killConn("vamp"); killConn("vampHB")
-    end
+    LocalPlayer.CharacterAdded:Connect(function() restoreCamera() end)
+    restoreCamera()
+    print("[FIX VAMP] Camera + backpack restored")
 end, CW, 46)
 
 -- ============================================================
--- ANTI MYOPIC (VPLI method)
--- Lock FOV to 70 every frame. Reset camera type if hijacked.
+-- NO CLIP (VPLI — new toggle)
+-- Stepped: set all char parts CanCollide = false
 -- ============================================================
-local DEFAULT_FOV = 70
+local vpliNoClipConn = nil
 
-createToggle(pgAnti, "👓  Anti Myopic", function(v)
+createToggle(pgAnti, "👻  No Clip (VPLI)", function(v)
     if v then
-        workspace.CurrentCamera.FieldOfView = DEFAULT_FOV
-        addConn("myopic", RunService.Heartbeat:Connect(function()
-            local cam = workspace.CurrentCamera
-            if cam.FieldOfView ~= DEFAULT_FOV then cam.FieldOfView = DEFAULT_FOV end
-            if cam.CameraType ~= Enum.CameraType.Custom
-            and cam.CameraType ~= Enum.CameraType.Follow then
-                cam.CameraType = Enum.CameraType.Custom
+        vpliNoClipConn = RunService.Stepped:Connect(function()
+            local char = LocalPlayer.Character
+            if char then
+                for _, part in ipairs(char:GetDescendants()) do
+                    if part:IsA("BasePart") and part.CanCollide then
+                        part.CanCollide = false
+                    end
+                end
             end
-        end))
+        end)
     else
-        killConn("myopic")
-    end
-end, CW, 46)
-
--- ============================================================
--- ANTI COLORBLIND (VPLI method)
--- Resets all Lighting color effects every ~1s.
--- ============================================================
-local Lighting = game:GetService("Lighting")
-local function resetColors()
-    for _, e in ipairs(Lighting:GetChildren()) do
-        if e:IsA("ColorCorrectionEffect") then
-            e.Brightness=0; e.Contrast=0; e.Saturation=0; e.TintColor=Color3.new(1,1,1)
+        if vpliNoClipConn then vpliNoClipConn:Disconnect(); vpliNoClipConn=nil end
+        -- Restore collision
+        local char = LocalPlayer.Character
+        if char then
+            for _, part in ipairs(char:GetDescendants()) do
+                if part:IsA("BasePart") then part.CanCollide = true end
+            end
         end
-        if e:IsA("BlurEffect") then e.Size=0 end
     end
-    Lighting.Ambient=Color3.fromRGB(127,127,127)
-    Lighting.OutdoorAmbient=Color3.fromRGB(127,127,127)
-    Lighting.Brightness=2
-end
-
-createToggle(pgAnti, "🎨  Anti Colorblind", function(v)
-    if v then
-        resetColors()
-        addConn("color", RunService.Heartbeat:Connect(function()
-            if math.random(1,60)==1 then resetColors() end
-        end))
-    else killConn("color") end
 end, CW, 46)
 
 -- ============================================================
--- ANTI JAIL (VPLI method)
--- Cast 4 horizontal rays every 20 frames.
--- 4 sides blocked within 6 studs = jailed.
--- Escape: temporarily CanCollide=false on all char parts,
--- burst upward, tp to last saved open position.
+-- ANTI JAIL (original — kept)
 -- ============================================================
 local lastOpenPos = nil
 
@@ -1656,7 +1677,7 @@ createToggle(pgAnti, "⛓  Anti Jail", function(v)
             if blocked < 4 then
                 lastOpenPos = pos
             else
-                print("[ANTI JAIL] Jailed — escaping via noclip")
+                print("[ANTI JAIL] Jailed — escaping")
                 local parts = {}
                 for _, p in ipairs(char:GetDescendants()) do
                     if p:IsA("BasePart") and p.CanCollide then
@@ -1756,10 +1777,16 @@ donateBox:GetPropertyChangedSignal("Text"):Connect(function()
     donateTarget = donateBox.Text
 end)
 
--- Interval slider (5s – 100s)
-createSlider(pgDonate, "Interval (sec)", 5, 100, 5, function(v)
-    donateInterval = v
-end, CW)
+-- Interval input — numbers only
+createLabel(pgDonate, "  Interval (seconds)", Color3.fromRGB(80,80,120), 12)
+local donateIntervalBox = createTextBox(pgDonate, "5", CW, 34)
+donateIntervalBox.ClearTextOnFocus = false
+donateIntervalBox:GetPropertyChangedSignal("Text"):Connect(function()
+    local clean = donateIntervalBox.Text:gsub("[^%d]", "")
+    if donateIntervalBox.Text ~= clean then donateIntervalBox.Text = clean end
+    local n = tonumber(clean)
+    if n and n >= 1 then donateInterval = n end
+end)
 
 -- Get my current time stat (checks common stat names)
 local function getMyTime()
@@ -1850,10 +1877,16 @@ abuseBox:GetPropertyChangedSignal("Text"):Connect(function()
     abuseTarget = abuseBox.Text
 end)
 
--- Interval slider (1s – 10s)
-createSlider(pgAbuse, "Interval (sec)", 1, 10, 3, function(v)
-    abuseInterval = v
-end, CW)
+-- Interval input — numbers only
+createLabel(pgAbuse, "  Interval (seconds)", Color3.fromRGB(80,80,120), 12)
+local abuseIntervalBox = createTextBox(pgAbuse, "3", CW, 34)
+abuseIntervalBox.ClearTextOnFocus = false
+abuseIntervalBox:GetPropertyChangedSignal("Text"):Connect(function()
+    local clean = abuseIntervalBox.Text:gsub("[^%d]", "")
+    if abuseIntervalBox.Text ~= clean then abuseIntervalBox.Text = clean end
+    local n = tonumber(clean)
+    if n and n >= 1 then abuseInterval = n end
+end)
 
 -- Find player by partial name
 local function findPlayer(name)
