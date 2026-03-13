@@ -45,7 +45,7 @@ gui.Name = "SimpleHub"
 gui.ResetOnSpawn = false
 
 local frame = Instance.new("Frame", gui)
-frame.Size             = UDim2.fromOffset(600, 400)
+frame.Size             = UDim2.fromOffset(680, 490)
 frame.Position         = UDim2.fromScale(0.5, 0.5)
 frame.AnchorPoint      = Vector2.new(0.5, 0.5)
 frame.BackgroundColor3 = Color3.fromRGB(30, 30, 50)
@@ -240,76 +240,50 @@ frame.InputChanged:Connect(function(input)
 end)
 
 ------------------------
--- PAGE SYSTEM  (CodeX original, extended to 8 tabs)
+-- PAGE SYSTEM - LEFT SIDEBAR TABS (no arrows)
 ------------------------
-local pages       = {"NUKE","FIX","SLOTS","AURA","BKIT","SPAM","ANTI","SCRIPTS","DONATE","ABUSE","SAVE ENLI","AUTO BUILD","CREDITS"}
+local pages       = {"NUKE","FIX","SLOTS","AURA","BKIT","SPAM","ANTI","SCRIPTS","DONATE","ABUSE","SAVE ENLI","AUTO BUILD","TOOLS","CREDITS"}
 local currentPage = 1
 
--- Page Label
-local pageLabel = Instance.new("TextLabel", frame)
-pageLabel.Size                   = UDim2.fromOffset(150, 40)
-pageLabel.Position               = UDim2.fromOffset(20, 20)
-pageLabel.BackgroundTransparency = 1
-pageLabel.Font                   = Enum.Font.Gotham
-pageLabel.TextSize               = 20
-pageLabel.TextColor3             = Color3.fromRGB(116, 113, 117)
-pageLabel.Text                   = pages[currentPage]
+-- LEFT SIDEBAR
+local sidebar = Instance.new("Frame", frame)
+sidebar.Size             = UDim2.new(0,112,1,0)
+sidebar.Position         = UDim2.fromOffset(0,0)
+sidebar.BackgroundColor3 = Color3.fromRGB(18,18,32)
+sidebar.BorderSizePixel  = 0
+Instance.new("UICorner", sidebar).CornerRadius = UDim.new(0,25)
+-- clip right corners straight
+local sideClip = Instance.new("Frame", sidebar)
+sideClip.Size             = UDim2.new(0,25,1,0)
+sideClip.Position         = UDim2.new(1,-25,0,0)
+sideClip.BackgroundColor3 = Color3.fromRGB(18,18,32)
+sideClip.BorderSizePixel  = 0
 
--- Arrows
-local leftArrow = Instance.new("TextButton", frame)
-leftArrow.Size                   = UDim2.fromOffset(40, 40)
-leftArrow.Position               = UDim2.fromOffset(20, 20)
-leftArrow.Text                   = "<"
-leftArrow.Font                   = Enum.Font.Gotham
-leftArrow.TextSize               = 20
-leftArrow.TextColor3             = Color3.fromRGB(116, 113, 117)
-leftArrow.BackgroundTransparency = 1
+local sideScroll = Instance.new("ScrollingFrame", sidebar)
+sideScroll.Size                = UDim2.new(1,0,1,-8)
+sideScroll.Position            = UDim2.fromOffset(0,4)
+sideScroll.BackgroundTransparency = 1
+sideScroll.BorderSizePixel     = 0
+sideScroll.ScrollBarThickness  = 0
+sideScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+sideScroll.CanvasSize          = UDim2.new(0,0,0,0)
+local sideLayout = Instance.new("UIListLayout", sideScroll)
+sideLayout.Padding             = UDim.new(0,3)
+sideLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+local sidePad = Instance.new("UIPadding", sideScroll)
+sidePad.PaddingTop = UDim.new(0,6)
 
-local rightArrow = Instance.new("TextButton", frame)
-rightArrow.Size                   = UDim2.fromOffset(40, 40)
-rightArrow.Position               = UDim2.fromOffset(130, 20)
-rightArrow.Text                   = ">"
-rightArrow.Font                   = Enum.Font.Gotham
-rightArrow.TextSize               = 20
-rightArrow.TextColor3             = Color3.fromRGB(116, 113, 117)
-rightArrow.BackgroundTransparency = 1
+local sideTabBtns = {}
+local leftArrow = {} -- stub so addArrowHover doesn't crash
+local rightArrow = {}
 
-------------------------
--- LOGS PANEL  (CodeX original)
-------------------------
-local logsFrame = Instance.new("Frame", frame)
-logsFrame.Size             = UDim2.fromOffset(250, 360)
-logsFrame.Position         = UDim2.new(1, -20, 0, 20)
-logsFrame.AnchorPoint      = Vector2.new(1, 0)
-logsFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 60)
-logsFrame.BorderSizePixel  = 0
-Instance.new("UICorner", logsFrame).CornerRadius = UDim.new(0, 12)
-
-local logsLabel = Instance.new("TextLabel", logsFrame)
-logsLabel.Size                   = UDim2.fromScale(1, 1)
-logsLabel.BackgroundTransparency = 1
-logsLabel.Font                   = Enum.Font.Gotham
-logsLabel.TextSize               = 13
-logsLabel.TextColor3             = Color3.fromRGB(116, 113, 117)
-logsLabel.TextXAlignment         = Enum.TextXAlignment.Left
-logsLabel.TextYAlignment         = Enum.TextYAlignment.Top
-logsLabel.TextWrapped            = true
-logsLabel.RichText               = true
-
-local logLines = {}
-local maxLines = 22
-local function addLog(msg)
-    table.insert(logLines, msg)
-    if #logLines > maxLines then table.remove(logLines, 1) end
-    logsLabel.Text = table.concat(logLines, "\n")
-end
+-- LOGS: simple print override (no visible panel, saves space)
 local oldPrint = print
 print = function(...)
     local args = {...}
-    local msg  = ""
-    for i, v in ipairs(args) do msg = msg .. tostring(v) .. "\t" end
-    addLog(msg)
-    oldPrint(...)
+    local msg = ""
+    for i,v in ipairs(args) do msg = msg..tostring(v).."\t" end
+    oldPrint(msg)
 end
 
 ------------------------
@@ -320,7 +294,7 @@ local function tweenProperty(obj, prop, to, duration)
 end
 
 -- Content width (fits left of logs panel)
-local CW = 300
+local CW = 520
 
 local function createButton(parent, text, func, w, h)
     w = w or CW; h = h or 40
@@ -454,18 +428,39 @@ local function createLabel(parent, text, col, sz, w, h)
     return lbl
 end
 
-local function createTextBox(parent, placeholder, w, h)
-    local box = Instance.new("TextBox", parent)
-    box.Size              = UDim2.fromOffset(w or CW, h or 36)
-    box.PlaceholderText   = placeholder
-    box.BackgroundColor3  = Color3.fromRGB(40, 40, 60)
-    box.TextColor3        = Color3.fromRGB(200, 200, 220)
-    box.PlaceholderColor3 = Color3.fromRGB(80, 80, 110)
-    box.Font              = Enum.Font.Gotham
-    box.TextSize          = 15
-    box.BorderSizePixel   = 0
-    box.ClearTextOnFocus  = false
-    Instance.new("UICorner", box).CornerRadius = UDim.new(0, 10)
+-- createTextBox: shows the function label on left, input field on right
+local function createTextBox(parent, labelText, w, h)
+    w = w or CW; h = h or 36
+    local wrap = Instance.new("Frame", parent)
+    wrap.Size             = UDim2.fromOffset(w, h)
+    wrap.BackgroundColor3 = Color3.fromRGB(28,28,48)
+    wrap.BorderSizePixel  = 0
+    Instance.new("UICorner", wrap).CornerRadius = UDim.new(0,8)
+    -- label (left 55%)
+    local lbl = Instance.new("TextLabel", wrap)
+    lbl.Size             = UDim2.new(0.56,0,1,0)
+    lbl.Position         = UDim2.fromOffset(8,0)
+    lbl.BackgroundTransparency = 1
+    lbl.Text             = labelText
+    lbl.Font             = Enum.Font.Gotham
+    lbl.TextSize         = 11
+    lbl.TextColor3       = Color3.fromRGB(160,160,185)
+    lbl.TextXAlignment   = Enum.TextXAlignment.Left
+    lbl.TextWrapped      = true
+    -- input (right 42%)
+    local box = Instance.new("TextBox", wrap)
+    box.Size             = UDim2.new(0.40,0,1,-6)
+    box.Position         = UDim2.new(0.58,0,0,3)
+    box.PlaceholderText  = "enter..."
+    box.Text             = ""
+    box.BackgroundColor3 = Color3.fromRGB(40,40,62)
+    box.TextColor3       = Color3.fromRGB(220,220,240)
+    box.PlaceholderColor3= Color3.fromRGB(90,90,120)
+    box.Font             = Enum.Font.Gotham
+    box.TextSize         = 12
+    box.BorderSizePixel  = 0
+    box.ClearTextOnFocus = false
+    Instance.new("UICorner", box).CornerRadius = UDim.new(0,6)
     return box
 end
 
@@ -477,27 +472,14 @@ local function createDivider(parent)
     return d
 end
 
--- Arrow hover  (CodeX original)
-local function addArrowHover(button)
-    local originalSize = button.Size
-    button.MouseEnter:Connect(function()
-        tweenProperty(button, "TextColor3", Color3.fromRGB(11, 95, 226), 0.3)
-        tweenProperty(button, "Size", UDim2.new(originalSize.X.Scale, originalSize.X.Offset + 10, originalSize.Y.Scale, originalSize.Y.Offset + 5), 0.2)
-    end)
-    button.MouseLeave:Connect(function()
-        tweenProperty(button, "TextColor3", Color3.fromRGB(116, 113, 117), 0.3)
-        tweenProperty(button, "Size", originalSize, 0.2)
-    end)
-end
-addArrowHover(leftArrow)
-addArrowHover(rightArrow)
+-- arrow hover removed (sidebar tabs used instead)
 
 -- Page scroll containers -- positioned in CodeX content area (x=20, y=68)
 local pageContainers = {}
 for i = 1, #pages do
     local sf = Instance.new("ScrollingFrame", frame)
-    sf.Size                  = UDim2.fromOffset(310, 315)
-    sf.Position              = UDim2.fromOffset(20, 68)
+    sf.Size                  = UDim2.fromOffset(556, 478)
+    sf.Position              = UDim2.fromOffset(116, 4)
     sf.BackgroundTransparency = 1
     sf.BorderSizePixel       = 0
     sf.ScrollBarThickness    = 3
@@ -509,27 +491,44 @@ for i = 1, #pages do
     ul.Padding             = UDim.new(0, 6)
     ul.HorizontalAlignment = Enum.HorizontalAlignment.Left
     local upad = Instance.new("UIPadding", sf)
-    upad.PaddingLeft = UDim.new(0, 2)
-    upad.PaddingTop  = UDim.new(0, 2)
+    upad.PaddingLeft = UDim.new(0, 4)
+    upad.PaddingTop  = UDim.new(0, 4)
     pageContainers[i] = sf
 end
 
--- Page switching  (CodeX original pattern)
+-- Sidebar tab switching
 local function updatePage()
-    pageLabel.Text = pages[currentPage]
     for i, c in ipairs(pageContainers) do c.Visible = (i == currentPage) end
+    for i, btn in ipairs(sideTabBtns) do
+        if i == currentPage then
+            btn.BackgroundColor3 = blueColor
+            btn.TextColor3       = Color3.new(1,1,1)
+        else
+            btn.BackgroundColor3 = Color3.fromRGB(28,28,46)
+            btn.TextColor3       = Color3.fromRGB(140,140,165)
+        end
+    end
 end
 
-leftArrow.MouseButton1Click:Connect(function()
-    currentPage = currentPage - 1
-    if currentPage < 1 then currentPage = #pages end
-    updatePage()
-end)
-rightArrow.MouseButton1Click:Connect(function()
-    currentPage = currentPage + 1
-    if currentPage > #pages then currentPage = 1 end
-    updatePage()
-end)
+-- Build sidebar tab buttons after pageContainers exist
+for i, name in ipairs(pages) do
+    local btn = Instance.new("TextButton", sideScroll)
+    btn.Size             = UDim2.fromOffset(100, 28)
+    btn.BackgroundColor3 = Color3.fromRGB(28,28,46)
+    btn.Text             = name
+    btn.Font             = Enum.Font.GothamBold
+    btn.TextSize         = 9
+    btn.TextColor3       = Color3.fromRGB(140,140,165)
+    btn.BorderSizePixel  = 0
+    btn.AutoButtonColor  = false
+    btn.TextWrapped      = true
+    Instance.new("UICorner", btn).CornerRadius = UDim.new(0,7)
+    btn.MouseButton1Click:Connect(function()
+        currentPage = i
+        updatePage()
+    end)
+    sideTabBtns[i] = btn
+end
 
 -- Shorthand refs
 local pgNuke    = pageContainers[1]
@@ -540,7 +539,8 @@ local pgBkit    = pageContainers[5]
 local pgSpam    = pageContainers[6]
 local pgAnti    = pageContainers[7]
 local pgAutoBuild = pageContainers[12]
-local pgCredits   = pageContainers[13]
+local pgTools     = pageContainers[13]
+local pgCredits   = pageContainers[14]
 local pgSaveEnli  = pageContainers[11]
 local pgScripts = pageContainers[8]
 local pgDonate  = pageContainers[9]
@@ -860,52 +860,26 @@ end
 -- FIX -- with retry until brick confirms UNANCHORED
 -- ============================================================
 local function runFix()
-    -- Clear face data UI
     for _, n in ipairs(faces) do
         if faceData[n] then
             faceData[n].txt.Text = ""
             faceData[n].clr.BackgroundColor3 = LIGHT_GRAY
         end
     end
-
     local remote, rootPos = getPaintRemote(); local brick = getBrick()
     if not remote or not brick then print("[FIX] missing tools"); return end
     local key = "both 🤝"
-
-    -- STEP 1: Fire plastic + unanchor, retry until confirmed UNANCHORED
-    local maxRetries = 8
-    for attempt = 1, maxRetries do
-        pcall(function() remote:FireServer(brick, Enum.NormalId.Top, rootPos, key, LIGHT_GRAY, "plastic", "unanchor") end)
-        task.wait(0.3)
+    -- Fire unanchor+plastic 4 times, no retry loop (loop was re-anchoring)
+    for _ = 1, 4 do
         pcall(function() remote:FireServer(brick, Enum.NormalId.Top, rootPos, key, LIGHT_GRAY, "unanchor", "") end)
-        task.wait(0.3)
-
-        -- Verify: check nearest placed brick is now unanchored
-        local placed = getNearestPlacedBrick()
-        if placed then
-            if not placed.Anchored then
-                print("[FIX] Unanchor confirmed on attempt "..attempt)
-                break
-            else
-                print("[FIX] Still anchored -- retry "..attempt.."/"..maxRetries)
-                -- Fire again with more force
-                pcall(function() remote:FireServer(brick, Enum.NormalId.Top, rootPos, key, LIGHT_GRAY, "unanchor", "") end)
-                task.wait(0.3)
-            end
-        else
-            break
-        end
+        pcall(function() remote:FireServer(brick, Enum.NormalId.Top, rootPos, key, LIGHT_GRAY, "plastic", "unanchor") end)
     end
-
-    -- STEP 2: Clear all faces to light gray + empty text
+    -- Clear all faces
     for _, n in ipairs(faces) do
-        for attempt = 1, 2 do
-            pcall(function() remote:FireServer(brick, faceEnums[n], rootPos, key, LIGHT_GRAY, "spray", "") end)
-            task.wait(0.08)
-        end
+        pcall(function() remote:FireServer(brick, faceEnums[n], rootPos, key, LIGHT_GRAY, "spray", "") end)
+        pcall(function() remote:FireServer(brick, faceEnums[n], rootPos, key, LIGHT_GRAY, "spray", "") end)
     end
-
-    print("[FIX] Done -- PLASTIC + UNANCHOR + LIGHT GRAY (verified)")
+    print("[FIX] Done")
 end
 
 -- BKIT exact call: pc.Delete.Script.Event:FireServer(Brick, HRP.Position)
@@ -2432,85 +2406,87 @@ local function bs_saveblock(bl)
 end
 
 -- ── buildblock: place a block via Build tool remotes ─────────
-local function bs_buildblock(pos, mat, color, bsize, bsizev3, origmat, sprays, anchored, collide)
-    local char = LocalPlayer.Character
-    if not char then return end
-    local hrp = char:FindFirstChild("HumanoidRootPart")
-    if not hrp then return end
+-- Track newly added bricks so we can paint them right after placing
+local bs_lastPlaced = nil
+pcall(function()
+    local function bs_watchFolder(folder)
+        folder.ChildAdded:Connect(function(child)
+            if child:IsA("BasePart") then bs_lastPlaced = child end
+        end)
+    end
+    if workspace.Bricks:FindFirstChild(LocalPlayer.Name) then
+        bs_watchFolder(workspace.Bricks[LocalPlayer.Name])
+    end
+    workspace.Bricks.ChildAdded:Connect(function(child)
+        if child.Name == LocalPlayer.Name then bs_watchFolder(child) end
+    end)
+end)
 
+local function bs_fireBuildTool(pos, modeOrSize)
+    local char = LocalPlayer.Character; if not char then return end
     local tool = char:FindFirstChild("Build") or LocalPlayer.Backpack:FindFirstChild("Build")
     if not tool then return end
     if tool.Parent ~= char then tool.Parent = char; task.wait(0.05) end
-    tool = char:FindFirstChild("Build")
-    if not tool then return end
-
-    local brick = ReplicatedStorage:FindFirstChild("Brick")
-    if not brick then return end
-
-    local pg = LocalPlayer.PlayerGui
-    local mode = "detailed"
-    if pg:FindFirstChild("Build") and pg.Build:FindFirstChild("Button") then
-        mode = pg.Build.Button.Text
-    end
-
-    -- size the brick
-    if bsizev3 then
-        local ok2 = false
-        local function trySize()
-            local ev = tool:FindFirstChild("origevent")
-            if ev then
-                pcall(function() ev:Invoke(brick, Enum.NormalId.Top, Vector3.new(99999,1000,99999), "resize "..bsizev3.X.." "..bsizev3.Y.." "..bsizev3.Z) end)
-            end
-            local sc = tool:FindFirstChild("Script")
-            if sc then
-                local r = sc:FindFirstChild("Event")
-                if r then pcall(function() r:FireServer(brick, Enum.NormalId.Top, Vector3.new(99999,1000,99999), "resize "..bsizev3.X.." "..bsizev3.Y.." "..bsizev3.Z) end) end
-            end
-        end
-        bs_novel = true
-        trySize()
-        task.wait(bs_resizewait)
-        bs_novel = false
-    end
-
-    -- place brick
-    local function firePlace()
-        local ev = tool:FindFirstChild("origevent")
-        if ev then
-            pcall(function() ev:Invoke(brick, Enum.NormalId.Top, pos, mode) end)
-            return
-        end
+    tool = char:FindFirstChild("Build"); if not tool then return end
+    local ev = tool:FindFirstChild("origevent")
+    if ev then
+        pcall(function() ev:Invoke(workspace.Terrain, Enum.NormalId.Top, pos, modeOrSize or "detailed") end)
+    else
         local sc = tool:FindFirstChild("Script")
         if sc then
             local r = sc:FindFirstChild("Event")
-            if r then pcall(function() r:FireServer(brick, Enum.NormalId.Top, pos, mode) end) end
+            if r then pcall(function() r:FireServer(workspace.Terrain, Enum.NormalId.Top, pos, modeOrSize or "detailed") end) end
         end
     end
-    firePlace()
+end
 
-    -- wait for brick to appear in history
+local function bs_buildblock(pos, mat, color, bsize, bsizev3, origmat, sprays, anchored, collide)
+    local char = LocalPlayer.Character; if not char then return end
+    local hrp  = char:FindFirstChild("HumanoidRootPart"); if not hrp then return end
+
+    bs_lastPlaced = nil  -- reset tracker
+
+    -- Resize if needed
+    if bsizev3 then
+        local sizeStr = "resize "..bsizev3.X.." "..bsizev3.Y.." "..bsizev3.Z
+        bs_fireBuildTool(Vector3.new(99999,5000,99999), sizeStr)
+        task.wait(bs_resizewait)
+    end
+
+    -- Place block
+    bs_fireBuildTool(pos, "detailed")
+
+    -- Wait for placement confirmation
     local placed = nil
-    if #bs_cubehistory > 0 then
-        local t0 = tick()
-        while tick()-t0 < 2 do
-            local latest = bs_cubehistory[bs_historynum]
-            if latest and latest.Parent then
-                placed = latest
-                break
+    local t0 = tick()
+    while tick()-t0 < 1.5 do
+        if bs_lastPlaced and bs_lastPlaced.Parent then placed = bs_lastPlaced; break end
+        task.wait(0.05)
+    end
+    -- fallback: find nearest brick to target pos
+    if not placed then
+        local myFolder = workspace.Bricks:FindFirstChild(LocalPlayer.Name)
+        if myFolder then
+            local bestDist = 8
+            for _, v in pairs(myFolder:GetChildren()) do
+                if v:IsA("BasePart") then
+                    local d = (v.Position - pos).Magnitude
+                    if d < bestDist then bestDist = d; placed = v end
+                end
             end
-            task.wait(0.05)
         end
     end
 
+    -- Paint the placed brick (color + material + anchor state)
     if placed and placed.Parent then
-        -- apply material / color / anchored / collide
         local paintTool = char:FindFirstChild("Paint") or LocalPlayer.Backpack:FindFirstChild("Paint")
         if paintTool then
-            if paintTool.Parent ~= char then paintTool.Parent = char end
+            if paintTool.Parent ~= char then paintTool.Parent = char; task.wait(0.05) end
             local remote = paintTool:FindFirstChild("Event",true) or paintTool:FindFirstChildWhichIsA("RemoteEvent",true)
             if remote then
                 local key = "both 🤝"
-                pcall(function() remote:FireServer(placed, Enum.NormalId.Top, hrp.Position, key, color or Color3.new(1,1,1), mat or "smooth", anchored and "anchor" or "unanchor") end)
+                pcall(function() remote:FireServer(placed, Enum.NormalId.Top, hrp.Position, key,
+                    color or Color3.new(1,1,1), mat or "smooth", anchored and "anchor" or "unanchor") end)
             end
         end
     end
@@ -2998,7 +2974,205 @@ bs_refreshPlrList()
 
 end -- close page 12
 
-do -- page 13: PAGE 13: CREDITS
+do -- page 13: TOOLS
+-- PAGE 13: TOOLS - Spy Chat, Auto Drop/Pickup Tools
+-- ============================================================
+
+createLabel(pgTools, "  Tools & Utilities", Color3.fromRGB(80,80,120), 13)
+createLabel(pgTools, "  Extra Stuff features by 2AREYOUMENTAL110", Color3.fromRGB(11,95,226), 11)
+createDivider(pgTools)
+
+-- ==== SPY CHAT ====
+createLabel(pgTools, "  Spy Chat", Color3.fromRGB(80,80,120), 12)
+createLabel(pgTools, "  Colors chat by role: orange=admin, cyan=arken, red=hidden/cmd, pink/red=IQ", Color3.fromRGB(11,95,226), 10)
+
+local tc_spychat = false
+local tc_namecolors = {
+    peasant  = {150,103,102},
+    arken    = {4,175,236},
+    admin    = {245,205,48},
+    hidden   = {255,0,0},
+    iqgenius = {255,179,179},
+    iqdumb   = {200,0,0}
+}
+local tc_namecolorshex = {}
+for i,v in pairs(tc_namecolors) do
+    tc_namecolorshex[i] = "#"..Color3.fromRGB(table.unpack(v)):ToHex()
+end
+
+local tc_origOIM = nil  -- store original so we can restore on toggle off
+
+local function tc_oimremake(mdata)
+    local plr = mdata.TextSource and mdata.TextSource.UserId and Players:GetPlayerByUserId(mdata.TextSource.UserId)
+    if not plr then return end
+    local cn = "peasant"
+    local hidden = false
+    if plr.Neutral == true then
+        cn = plr:GetAttribute("Arken") == true and "arken" or "peasant"
+    else
+        cn = "admin"
+    end
+    local muted = pcall(function() return plr:HasTag("Muted") end) and plr:HasTag("Muted")
+    if muted then cn = "hidden" end
+    if string.sub(mdata.Text,1,1) == ";" then
+        cn = "hidden"; hidden = true
+    end
+    local iq = nil
+    if plr:GetAttribute("IQ") then
+        if plr:GetAttribute("IQ") >= 200 then iq = "genius"; cn = "iqgenius"
+        elseif plr:GetAttribute("IQ") <= 50 then iq = "dumb"; cn = "iqdumb" end
+    end
+    local col = tc_namecolors[cn]
+    local rgb = "rgb("..col[1]..","..col[2]..","..col[3]..")"
+    local tag = ""
+    if hidden then tag = tag.." [HIDDEN]" end
+    if muted  then tag = tag.." [MUTED]"  end
+    if iq     then tag = tag.." ["..iq.."]" end
+    mdata.PrefixText = "<font color='"..rgb.."'><b>("..plr.DisplayName..tag..") </b></font>"
+end
+
+createToggle(pgTools, "  Spy Chat ON/OFF", function(v)
+    tc_spychat = v
+    if v then
+        game.TextChatService.OnIncomingMessage = tc_oimremake
+        print("[TOOLS] Spy Chat ON")
+    else
+        game.TextChatService.OnIncomingMessage = tc_origOIM
+        print("[TOOLS] Spy Chat OFF")
+    end
+end, CW)
+
+createDivider(pgTools)
+
+-- ==== AUTO DROP / PICKUP TOOLS ====
+createLabel(pgTools, "  Auto Drop & Pickup Tools", Color3.fromRGB(80,80,120), 12)
+createLabel(pgTools, "  Auto drops ALL tools on death (incl. Arkenstone if enabled)", Color3.fromRGB(11,95,226), 10)
+createLabel(pgTools, "  Auto picks up your dropped tools when you respawn", Color3.fromRGB(11,95,226), 10)
+
+local tc_pickuptools   = false
+local tc_autodroptools = false
+local tc_keepArken     = true   -- don't drop Arkenstone by default
+local tc_currhum       = nil
+
+-- Track humanoid across spawns
+local function tc_trackChar(c)
+    local hum = c:FindFirstChildOfClass("Humanoid")
+    if hum then tc_currhum = hum end
+    c.ChildAdded:Connect(function(child)
+        if child:IsA("Humanoid") then tc_currhum = child end
+        -- tag tools that get added to char as "DroppedByScript" so we can re-pickup them
+        if child:IsA("Tool") and not child:HasTag("DroppedByScript") then
+            pcall(function() child:AddTag("DroppedByScript") end)
+        end
+    end)
+end
+
+if LocalPlayer.Character then tc_trackChar(LocalPlayer.Character) end
+LocalPlayer.CharacterAdded:Connect(function(c) tc_trackChar(c) end)
+
+-- Main loop: pickup on alive, drop on death
+coroutine.wrap(function()
+    while true do
+        task.wait(0.1)
+        if tc_currhum and tc_currhum.Parent then
+            -- AUTO PICKUP: pick up tools we dropped (tagged)
+            if tc_pickuptools and tc_currhum.Health > 0 then
+                for _, v in pairs(workspace:GetChildren()) do
+                    if v:IsA("Tool") and v:FindFirstChild("Handle") then
+                        local hasTag = pcall(function() return v:HasTag("DroppedByScript") end) and v:HasTag("DroppedByScript")
+                        if hasTag then
+                            pcall(function() tc_currhum:EquipTool(v) end)
+                        end
+                    end
+                end
+            end
+            -- AUTO DROP: drop all tools on death
+            if tc_autodroptools and tc_currhum.Health <= 0 then
+                local char = LocalPlayer.Character
+                if char then
+                    -- move backpack tools to char first
+                    for _, v in pairs(LocalPlayer.Backpack:GetChildren()) do
+                        if v:IsA("Tool") then
+                            if not (tc_keepArken and v.Name == "The Arkenstone") then
+                                pcall(function() v.Parent = char end)
+                            end
+                        end
+                    end
+                    task.wait(0.05)
+                    -- drop all char tools to workspace
+                    for _, v in pairs(char:GetChildren()) do
+                        if v:IsA("Tool") then
+                            if not (tc_keepArken and v.Name == "The Arkenstone") then
+                                pcall(function()
+                                    v:AddTag("DroppedByScript")
+                                    v.Parent = workspace
+                                end)
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+end)()
+
+createToggle(pgTools, "  Auto Pickup Dropped Tools", function(v)
+    tc_pickuptools = v
+    print("[TOOLS] Auto Pickup: "..(v and "ON" or "OFF"))
+end, CW)
+
+createToggle(pgTools, "  Auto Drop Tools on Death", function(v)
+    tc_autodroptools = v
+    print("[TOOLS] Auto Drop: "..(v and "ON" or "OFF"))
+end, CW)
+
+createToggle(pgTools, "  Keep Arkenstone (don't drop it)", function(v)
+    tc_keepArken = v
+end, CW)
+
+createDivider(pgTools)
+
+-- MANUAL buttons
+createLabel(pgTools, "  Manual Actions", Color3.fromRGB(80,80,120), 12)
+
+createButton(pgTools, "  Equip All Tools", function()
+    local char = LocalPlayer.Character; if not char then return end
+    for _, v in pairs(LocalPlayer.Backpack:GetChildren()) do
+        if v:IsA("Tool") then
+            if not (tc_keepArken and v.Name == "The Arkenstone") then
+                pcall(function() v.Parent = char end)
+            end
+        end
+    end
+    print("[TOOLS] Equipped all tools")
+end, CW, 34)
+
+createButton(pgTools, "  Drop All Tools", function()
+    local char = LocalPlayer.Character; if not char then return end
+    for _, v in pairs(LocalPlayer.Backpack:GetChildren()) do
+        if v:IsA("Tool") then
+            if not (tc_keepArken and v.Name == "The Arkenstone") then
+                pcall(function() v.Parent = char end)
+            end
+        end
+    end
+    task.wait(0.05)
+    for _, v in pairs(char:GetChildren()) do
+        if v:IsA("Tool") then
+            if not (tc_keepArken and v.Name == "The Arkenstone") then
+                pcall(function()
+                    v:AddTag("DroppedByScript")
+                    v.Parent = workspace
+                end)
+            end
+        end
+    end
+    print("[TOOLS] Dropped all tools")
+end, CW, 34)
+
+end -- close page 14
+
+do -- page 14: PAGE 14: CREDITS
 -- PAGE 13: CREDITS -- text only, no buttons
 -- ============================================================
 local credLbl = Instance.new("TextLabel", pgCredits)
