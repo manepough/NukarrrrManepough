@@ -871,10 +871,14 @@ local function runNuke()
     local brick = getBrick()
     if not remote or not brick then print("[NUKE] missing Paint tool or Brick"); return end
 
-    local key = "both 🤝"
-    local blk = Color3.new(0, 0, 0)
+    -- Remote arg layout (confirmed from Extra Stuff + reference script):
+    -- arg1=brick  arg2=face  arg3=pos  arg4=mode  arg5=color  arg6=material/action  arg7=spray_text
+    -- mode "both 🤝" = set color(arg5) AND material/action(arg6) at same time
+    -- mode "material" = material/action only, arg5=nil
 
-    -- Default face texts (use custom if set in UI, else use defaults)
+    local KEY = "both 🤝"
+    local BLACK = Color3.new(0,0,0)
+
     local defaultTexts = {
         Front  = "Fuck Admin",
         Back   = "say i eat pussy",
@@ -884,22 +888,30 @@ local function runNuke()
         Left   = "CRY GGS",
     }
 
-    -- Step 1: Base paint — toxic material + anchor (same as reference script)
-    remote:FireServer(brick, Enum.NormalId.Top, rootPos, key, blk, "toxic", "anchor")
+    -- STEP 1: Set toxic material (Neon) using "both 🤝" mode
+    -- This makes the block glow/toxic. Color = black for neon effect.
+    remote:FireServer(brick, Enum.NormalId.Top, rootPos, KEY, BLACK, "toxic", "")
     task.wait(0.4)
 
-    -- Step 2: Spray all 6 faces with text (0.1s gap like reference script)
+    -- STEP 2: Paint each face — "both 🤝" with faceColor + "spray" + text
+    -- This sets BOTH the face color AND the spray text in one call per face.
     for _, n in ipairs(faces) do
         local rawTxt = (faceData[n] and faceData[n].txt and faceData[n].txt.Text ~= "" and faceData[n].txt.Text)
                        or defaultTexts[n] or "GGS"
         local ft = bypassText(rawTxt)
         local fc = (faceData[n] and faceData[n].clr and faceData[n].clr.BackgroundColor3) or Color3.fromRGB(255,0,0)
-        remote:FireServer(brick, faceEnums[n], rootPos, key, fc, "spray", ft)
+        -- "both 🤝" + faceColor + "spray" + text = sets color AND text on this face
+        remote:FireServer(brick, faceEnums[n], rootPos, KEY, fc, "spray", ft)
         task.wait(0.1)
     end
 
-    -- Step 3: Final anchor lock to make sure it sticks
-    remote:FireServer(brick, Enum.NormalId.Top, rootPos, key, blk, "anchor", "")
+    -- STEP 3: Anchor using "material" mode (not "both 🤝")
+    -- Extra Stuff confirms: anchor = arg4="material", arg5=nil, arg6="anchor", arg7=""
+    remote:FireServer(brick, Enum.NormalId.Top, rootPos, "material", nil, "anchor", "")
+    task.wait(0.15)
+    -- Fire twice to make sure
+    remote:FireServer(brick, Enum.NormalId.Top, rootPos, "material", nil, "anchor", "")
+
     print("[NUKE] Done")
 end
 
@@ -919,23 +931,31 @@ local function runFix()
     local brick = getBrick()
     if not remote or not brick then print("[FIX] missing Paint tool or Brick"); return end
 
-    local key = "both 🤝"
+    -- Same arg layout as nuke:
+    -- "both 🤝" = set color+material together
+    -- "material" = material/action only (nil color)
 
-    -- Step 1: Base paint — plastic material (untoxic), same as reference script
-    remote:FireServer(brick, Enum.NormalId.Top, rootPos, key, LIGHT_GRAY, "plastic", "")
+    local KEY = "both 🤝"
+
+    -- STEP 1: Set plastic material (untoxic) + light gray color
+    -- Matches reference script exactly: plastic base first
+    remote:FireServer(brick, Enum.NormalId.Top, rootPos, KEY, LIGHT_GRAY, "plastic", "")
     task.wait(0.4)
 
-    -- Step 2: Spray all 6 faces with a space to clear toxic text (0.1s gap like reference script)
+    -- STEP 2: Clear spray text on all 6 faces with space character
+    -- "both 🤝" + LIGHT_GRAY + "spray" + " " = sets color to light gray AND clears text
     for _, n in ipairs(faces) do
-        remote:FireServer(brick, faceEnums[n], rootPos, key, LIGHT_GRAY, "spray", " ")
+        remote:FireServer(brick, faceEnums[n], rootPos, KEY, LIGHT_GRAY, "spray", " ")
         task.wait(0.1)
     end
 
-    -- Step 3: Unanchor the brick
-    remote:FireServer(brick, Enum.NormalId.Top, rootPos, key, LIGHT_GRAY, "unanchor", "")
-    task.wait(0.1)
-    -- Fire unanchor one more time to be safe
-    remote:FireServer(brick, Enum.NormalId.Top, rootPos, key, LIGHT_GRAY, "plastic", "unanchor")
+    -- STEP 3: Unanchor using "material" mode ONLY — NOT "both 🤝"
+    -- This is critical: "both 🤝" + "unanchor" was treating unanchor as spray text.
+    -- "material" mode fires the unanchor action cleanly with no color side-effect.
+    remote:FireServer(brick, Enum.NormalId.Top, rootPos, "material", nil, "unanchor", "")
+    task.wait(0.15)
+    -- Second unanchor to make sure it sticks
+    remote:FireServer(brick, Enum.NormalId.Top, rootPos, "material", nil, "unanchor", "")
 
     print("[FIX] Done")
 end
