@@ -242,7 +242,7 @@ end)
 ------------------------
 -- PAGE SYSTEM  (CodeX original, extended to 8 tabs)
 ------------------------
-local pages       = {"NUKE","FIX","SLOTS","AURA","BKIT","SPAM","ANTI","SCRIPTS","DONATE","ABUSE","SAVE ENLI","CREDITS"}
+local pages       = {"NUKE","FIX","SLOTS","AURA","BKIT","SPAM","ANTI","SCRIPTS","DONATE","ABUSE","SAVE ENLI","AUTO BUILD","CREDITS"}
 local currentPage = 1
 
 -- Page Label
@@ -539,7 +539,8 @@ local pgAura    = pageContainers[4]
 local pgBkit    = pageContainers[5]
 local pgSpam    = pageContainers[6]
 local pgAnti    = pageContainers[7]
-local pgCredits   = pageContainers[12]
+local pgAutoBuild = pageContainers[12]
+local pgCredits   = pageContainers[13]
 local pgSaveEnli  = pageContainers[11]
 local pgScripts = pageContainers[8]
 local pgDonate  = pageContainers[9]
@@ -2269,7 +2270,318 @@ createButton(pgSaveEnli, "📍  TP TO STASH", function()
     end
 end, CW, 42)
 
--- PAGE 12: CREDITS — text only, no buttons
+
+-- ============================================================
+-- PAGE 12: AUTO BUILD  (Extra Stuff Updated by 2AREYOUMENTAL110)
+-- ============================================================
+
+createLabel(pgAutoBuild, "  Auto Build", Color3.fromRGB(80,80,120), 13)
+createLabel(pgAutoBuild, "  by 2AREYOUMENTAL110 (Extra Stuff Updated)", Color3.fromRGB(11,95,226), 11)
+createDivider(pgAutoBuild)
+
+-- equip tool helper
+local function es_equip(name)
+    local char = LocalPlayer.Character; if not char then return nil end
+    local t = char:FindFirstChild(name) or LocalPlayer.Backpack:FindFirstChild(name)
+    if not t then return nil end
+    if t.Parent ~= char then t.Parent = char; task.wait(0.05) end
+    return char:FindFirstChild(name)
+end
+
+-- fire build event (origevent first, then Script.Event)
+local function es_build(tool, parent, side, pos, mode)
+    if not tool then return end
+    local ev = tool:FindFirstChild("origevent")
+    if ev then pcall(function() ev:Invoke(parent, side, pos, mode) end); return end
+    local sc = tool:FindFirstChild("Script")
+    if sc then local ev2 = sc:FindFirstChild("Event"); if ev2 then pcall(function() ev2:FireServer(parent, side, pos, mode) end) end end
+end
+
+-- fire delete event
+local function es_delete(v)
+    local del = es_equip("Delete"); if not del then return end
+    local ev = del:FindFirstChild("origevent")
+    if ev then pcall(function() ev:Invoke(v, v.Position) end); return end
+    local sc = del:FindFirstChild("Script")
+    if sc then local ev2 = sc:FindFirstChild("Event"); if ev2 then pcall(function() ev2:FireServer(v, v.Position) end) end end
+end
+
+-- get current build mode from playerGui
+local function es_mode()
+    local pg = LocalPlayer.PlayerGui
+    if pg:FindFirstChild("Build") and pg.Build:FindFirstChild("Button") then return pg.Build.Button.Text end
+    return "normal"
+end
+
+-- ─── SPAM BUILD ─────────────────────────────────────────────────────────
+createLabel(pgAutoBuild, "  Spam Build", Color3.fromRGB(80,80,120), 12)
+
+local es_spmbl = false
+createToggle(pgAutoBuild, "  Spam Blocks at Your Position", function(v)
+    es_spmbl = v
+    if v then task.spawn(function()
+        while es_spmbl do
+            task.wait(0.1)
+            local char = LocalPlayer.Character; if not char then continue end
+            local hrp = char:FindFirstChild("HumanoidRootPart"); if not hrp then continue end
+            local tool = es_equip("Build"); if not tool then continue end
+            es_build(tool, workspace.Terrain, Enum.NormalId.Top, hrp.Position - Vector3.new(0,1.5,0), es_mode())
+        end
+    end) end
+end, CW)
+
+local es_spmsi = false
+createToggle(pgAutoBuild, "  Spam Signs at Your Position", function(v)
+    es_spmsi = v
+    if v then task.spawn(function()
+        while es_spmsi do
+            task.wait(0.1)
+            local char = LocalPlayer.Character; if not char then continue end
+            local hrp = char:FindFirstChild("HumanoidRootPart"); if not hrp then continue end
+            local tool = es_equip("Sign"); if not tool then continue end
+            es_build(tool, workspace.Terrain, Enum.NormalId.Top, hrp.Position - Vector3.new(0,1.5,0), "normal")
+        end
+    end) end
+end, CW)
+
+createDivider(pgAutoBuild)
+
+-- ─── TOXIFY AURA ────────────────────────────────────────────────────────
+createLabel(pgAutoBuild, "  Toxify Aura", Color3.fromRGB(80,80,120), 12)
+createLabel(pgAutoBuild, "  Places toxic brick under nearby players (<40 studs)", Color3.fromRGB(11,95,226), 11)
+
+local es_toxbrick = nil
+local es_buildingtox = false
+local es_tkill = false
+
+-- catch newly placed brick as toxic seed
+pcall(function()
+    if workspace:FindFirstChild("Bricks") and workspace.Bricks:FindFirstChild(LocalPlayer.Name) then
+        workspace.Bricks[LocalPlayer.Name].ChildAdded:Connect(function(child)
+            if es_buildingtox then es_toxbrick = child end
+        end)
+    end
+end)
+
+createToggle(pgAutoBuild, "  Toxify Aura", function(v)
+    es_tkill = v; es_buildingtox = false
+    if v then task.spawn(function()
+        while es_tkill do
+            task.wait()
+            local char = LocalPlayer.Character; if not char then continue end
+            local hrp = char:FindFirstChild("HumanoidRootPart"); if not hrp then continue end
+            if not es_toxbrick or not es_toxbrick:IsDescendantOf(workspace) then
+                local pt = es_equip("Build") or es_equip("Paint")
+                if pt then
+                    es_buildingtox = true
+                    local opos = hrp.CFrame
+                    local remote = pt:FindFirstChild("Event",true) or pt:FindFirstChildWhichIsA("RemoteEvent",true)
+                    if remote then
+                        local offPos = Vector3.new(math.random(10000,100000),math.random(1000,5000),math.random(10000,100000))
+                        local key = "both \u{1F91D}"
+                        pcall(function() remote:FireServer(ReplicatedStorage:FindFirstChild("Brick"), Enum.NormalId.Top, offPos, key, Color3.new(0,0,0), "toxic", "anchor") end)
+                    end
+                    task.wait(0.5); es_buildingtox = false
+                    hrp.CFrame = opos
+                end
+            end
+            if es_toxbrick and es_toxbrick:IsDescendantOf(workspace) then
+                local bt = es_equip("Build"); if not bt then continue end
+                for _, plr in pairs(Players:GetPlayers()) do
+                    if plr ~= LocalPlayer and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
+                        local phrp = plr.Character.HumanoidRootPart
+                        if (phrp.Position - hrp.Position).Magnitude < 40 then
+                            local pos = (phrp.CFrame * CFrame.new(0,0,-phrp.Velocity.Magnitude/2.5)).Position
+                            es_build(bt, es_toxbrick, Enum.NormalId.Top, pos, "detailed")
+                            task.wait(0.1)
+                        end
+                    end
+                end
+            end
+        end
+    end) end
+end, CW)
+
+createDivider(pgAutoBuild)
+
+-- ─── DELETE AURA ────────────────────────────────────────────────────────
+createLabel(pgAutoBuild, "  Delete Aura", Color3.fromRGB(80,80,120), 12)
+createLabel(pgAutoBuild, "  WARNING: also deletes your own builds", Color3.fromRGB(200,100,0), 11)
+
+local es_daurarange = 35
+createLabel(pgAutoBuild, "  Range in studs (default 35)", Color3.fromRGB(80,80,120), 11)
+local es_rangeBox = createTextBox(pgAutoBuild, "35", CW, 30)
+es_rangeBox.ClearTextOnFocus = false
+es_rangeBox:GetPropertyChangedSignal("Text"):Connect(function()
+    local n = tonumber(es_rangeBox.Text); if n and n > 0 then es_daurarange = n end
+end)
+
+local es_daura = false
+local es_dauras = false
+
+-- sphere part for GetPartsInPart detection (standard mode)
+local es_dauraDetect = Instance.new("Part")
+es_dauraDetect.Shape = Enum.PartType.Ball
+es_dauraDetect.Anchored = true; es_dauraDetect.CanCollide = false
+es_dauraDetect.CastShadow = false; es_dauraDetect.CanQuery = false
+es_dauraDetect.Transparency = 1
+es_dauraDetect.Size = Vector3.new(es_daurarange,es_daurarange,es_daurarange)
+es_dauraDetect.Parent = workspace
+
+local es_filter = OverlapParams.new()
+es_filter.FilterType = Enum.RaycastFilterType.Include
+es_filter.MaxParts = 50
+pcall(function() if workspace:FindFirstChild("Bricks") then es_filter:AddToFilter(workspace.Bricks) end end)
+
+createToggle(pgAutoBuild, "  Delete Aura (Standard)", function(v)
+    es_daura = v
+    es_dauraDetect.Transparency = v and 0.85 or 1
+end, CW)
+
+createToggle(pgAutoBuild, "  Delete Aura (Solara)", function(v)
+    es_dauras = v
+    es_dauraDetect.Transparency = v and 0.85 or 1
+end, CW)
+
+-- combined aura loop
+coroutine.wrap(function()
+    while true do
+        task.wait()
+        pcall(function()
+            local char = LocalPlayer.Character; if not char then return end
+            local hrp = char:FindFirstChild("HumanoidRootPart"); if not hrp then return end
+            es_dauraDetect.Position = hrp.Position
+            es_dauraDetect.Size = Vector3.new(es_daurarange,es_daurarange,es_daurarange)
+            if es_daura then
+                local parts = workspace:GetPartsInPart(es_dauraDetect, es_filter)
+                for _, v in pairs(parts) do
+                    coroutine.wrap(function() pcall(function() es_delete(v) end) end)()
+                end
+            end
+            if es_dauras then
+                local bricks = workspace:FindFirstChild("Bricks")
+                if bricks then
+                    for _, v in pairs(bricks:GetDescendants()) do
+                        if v:IsA("BasePart") and (v.Position - hrp.Position).Magnitude < es_daurarange then
+                            coroutine.wrap(function() pcall(function() es_delete(v) end) end)()
+                        end
+                    end
+                end
+            end
+        end)
+    end
+end)()
+
+createDivider(pgAutoBuild)
+
+-- ─── SELECT BLOCK + SPAM SIDE ───────────────────────────────────────────
+createLabel(pgAutoBuild, "  Select Block & Spam Side", Color3.fromRGB(80,80,120), 12)
+createLabel(pgAutoBuild, "  Tip: Use detailed mode to spawn blocks at your feet", Color3.fromRGB(11,95,226), 11)
+
+local es_sblock = nil
+local es_side   = Enum.NormalId.Top
+local es_spmsb  = false
+
+local es_sbox = Instance.new("SelectionBox")
+es_sbox.Color3 = Color3.fromRGB(0,170,255)
+es_sbox.LineThickness = -1
+es_sbox.SurfaceColor3 = Color3.fromRGB(13,105,172)
+es_sbox.SurfaceTransparency = 1
+es_sbox.Transparency = 0
+es_sbox.Parent = game:GetService("CoreGui")
+
+local es_ssbox = Instance.new("SurfaceGui")
+es_ssbox.Parent = game:GetService("CoreGui")
+es_ssbox.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+local es_ssframe = Instance.new("Frame", es_ssbox)
+es_ssframe.BackgroundTransparency = 1
+es_ssframe.Size = UDim2.new(1,0,1,0)
+local es_uistroke = Instance.new("UIStroke", es_ssframe)
+es_uistroke.LineJoinMode = Enum.LineJoinMode.Miter
+es_uistroke.Color = Color3.fromRGB(13,105,172)
+es_uistroke.Thickness = -1
+
+local es_blockLbl = createLabel(pgAutoBuild, "  No Block Selected", Color3.fromRGB(116,113,117), 11)
+
+local es_selectConn = nil
+createToggle(pgAutoBuild, "  Select Block (click to pick)", function(v)
+    es_uistroke.Thickness = v and 15 or -1
+    if v then
+        es_selectConn = UserInputService.InputBegan:Connect(function(input, gpe)
+            if gpe or input.UserInputType ~= Enum.UserInputType.MouseButton1 then return end
+            local ray = workspace.CurrentCamera:ScreenPointToRay(input.Position.X, input.Position.Y)
+            local rp = RaycastParams.new(); rp.FilterType = Enum.RaycastFilterType.Exclude
+            local excl = {}
+            for _, p in ipairs(Players:GetPlayers()) do if p.Character then table.insert(excl,p.Character) end end
+            rp.FilterDescendantsInstances = excl
+            local res = workspace:Raycast(ray.Origin, ray.Direction*500, rp)
+            if res and res.Instance and res.Instance:IsA("BasePart") then
+                es_sblock = res.Instance
+                es_sbox.Adornee = es_sblock
+                es_ssbox.Adornee = es_sblock; es_ssbox.Face = es_side
+                es_blockLbl.Text = "  Selected: "..es_sblock.Name
+                es_blockLbl.TextColor3 = Color3.fromRGB(11,95,226)
+            end
+        end)
+    else
+        if es_selectConn then es_selectConn:Disconnect(); es_selectConn = nil end
+    end
+end, CW)
+
+createToggle(pgAutoBuild, "  Outline Selected Block", function(v)
+    es_sbox.LineThickness = v and 0.05 or -1
+end, CW)
+
+-- Side selector row
+createLabel(pgAutoBuild, "  Side:", Color3.fromRGB(80,80,120), 11)
+local sideRowFrame = Instance.new("Frame", pgAutoBuild)
+sideRowFrame.Size = UDim2.fromOffset(CW, 30)
+sideRowFrame.BackgroundTransparency = 1; sideRowFrame.BorderSizePixel = 0
+local sideRowLayout = Instance.new("UIListLayout", sideRowFrame)
+sideRowLayout.FillDirection = Enum.FillDirection.Horizontal; sideRowLayout.Padding = UDim.new(0,3)
+local es_sideBtns = {}
+for _, sn in ipairs({"Right","Top","Back","Left","Bottom","Front"}) do
+    local sb = Instance.new("TextButton", sideRowFrame)
+    sb.Size = UDim2.fromOffset(50,26); sb.BackgroundColor3 = Color3.fromRGB(38,38,58)
+    sb.Text = sn; sb.Font = Enum.Font.GothamBold; sb.TextSize = 9
+    sb.TextColor3 = Color3.fromRGB(160,160,180); sb.BorderSizePixel = 0; sb.AutoButtonColor = false
+    Instance.new("UICorner",sb).CornerRadius = UDim.new(0,5)
+    sb.MouseButton1Click:Connect(function()
+        es_side = Enum.NormalId[sn]
+        for _, b in ipairs(es_sideBtns) do b.BackgroundColor3=Color3.fromRGB(38,38,58); b.TextColor3=Color3.fromRGB(160,160,180) end
+        sb.BackgroundColor3=blueColor; sb.TextColor3=Color3.new(1,1,1)
+        if es_sblock then es_ssbox.Adornee=es_sblock; es_ssbox.Face=es_side end
+    end)
+    table.insert(es_sideBtns, sb)
+end
+-- Default Top selected
+if es_sideBtns[2] then es_sideBtns[2].BackgroundColor3=blueColor; es_sideBtns[2].TextColor3=Color3.new(1,1,1) end
+
+-- Select side by clicking (exact Extra Stuff ss toggle — enabled by default)
+local es_ss = true
+createToggle(pgAutoBuild, "  Select Side by Clicking Block Face", function(v)
+    es_ss = v
+end, CW)
+
+createToggle(pgAutoBuild, "  Spam Selected Block Side", function(v)
+    es_spmsb = v
+    if v then task.spawn(function()
+        while es_spmsb do
+            task.wait(0.05)
+            local char = LocalPlayer.Character; if not char then continue end
+            local hrp = char:FindFirstChild("HumanoidRootPart"); if not hrp then continue end
+            if not es_sblock or not es_sblock.Parent then continue end
+            local tool = es_equip("Build"); if not tool then continue end
+            local mode = es_mode()
+            local ok, err = pcall(function()
+                es_build(tool, es_sblock, es_side, hrp.Position - Vector3.new(0,1.5,0), mode)
+            end)
+            if not ok then print("[AUTO BUILD] "..tostring(err)) end
+        end
+    end) end
+end, CW)
+
+-- PAGE 13: CREDITS — text only, no buttons
 -- ============================================================
 local credLbl = Instance.new("TextLabel", pgCredits)
 credLbl.Size                   = UDim2.fromOffset(CW, 300)
