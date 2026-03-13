@@ -50,68 +50,149 @@ local CW         = 340  -- content width
 local introGui = Instance.new("ScreenGui", LocalPlayer.PlayerGui)
 introGui.Name = "FlameManeIntro"; introGui.ResetOnSpawn = false
 introGui.IgnoreGuiInset = true; introGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+introGui.DisplayOrder = 999
 
+-- Full black base
 local iBg = Instance.new("Frame", introGui)
 iBg.Size = UDim2.fromScale(1,1); iBg.BackgroundColor3 = Color3.new(0,0,0)
 iBg.BackgroundTransparency = 0; iBg.BorderSizePixel = 0; iBg.ZIndex = 20
 
--- Red glow overlay
-local iGlow = Instance.new("Frame", iBg)
-iGlow.Size = UDim2.fromScale(1,1); iGlow.BackgroundColor3 = Color3.fromRGB(180,20,0)
-iGlow.BackgroundTransparency = 1; iGlow.BorderSizePixel = 0; iGlow.ZIndex = 21
+-- Cinematic black bars (top + bottom — letterbox style like flamefrags edits)
+local topBar = Instance.new("Frame", iBg)
+topBar.Size = UDim2.new(1,0,0,0); topBar.Position = UDim2.fromOffset(0,0)
+topBar.BackgroundColor3 = Color3.new(0,0,0); topBar.BorderSizePixel = 0; topBar.ZIndex = 25
 
--- Title
-local iTxt = Instance.new("TextLabel", iBg)
-iTxt.Size = UDim2.new(1,0,0,90); iTxt.Position = UDim2.new(0,0,0.38,-45)
-iTxt.Text = ""; iTxt.Font = Enum.Font.GothamBlack; iTxt.TextSize = 72
-iTxt.TextColor3 = Color3.fromRGB(255,70,0); iTxt.BackgroundTransparency = 1
-iTxt.TextTransparency = 1; iTxt.ZIndex = 22
+local botBar = Instance.new("Frame", iBg)
+botBar.Size = UDim2.new(1,0,0,0); botBar.Position = UDim2.new(0,0,1,0)
+botBar.BackgroundColor3 = Color3.new(0,0,0); botBar.BorderSizePixel = 0; botBar.ZIndex = 25
 
--- Subtitle
-local iSub = Instance.new("TextLabel", iBg)
-iSub.Size = UDim2.new(1,0,0,28); iSub.Position = UDim2.new(0,0,0.38,52)
-iSub.Text = "THE CHOSEN ONE"; iSub.Font = Enum.Font.GothamBold; iSub.TextSize = 16
-iSub.TextColor3 = Color3.fromRGB(255,140,0); iSub.BackgroundTransparency = 1
-iSub.TextTransparency = 1; iSub.ZIndex = 22
+-- Red/orange full-screen flash overlay
+local iFlash = Instance.new("Frame", iBg)
+iFlash.Size = UDim2.fromScale(1,1); iFlash.BackgroundColor3 = Color3.fromRGB(220,30,0)
+iFlash.BackgroundTransparency = 1; iFlash.BorderSizePixel = 0; iFlash.ZIndex = 22
 
--- Bar wipe lines (film edit style)
-local function makeBar(yOff)
-    local b = Instance.new("Frame", iBg)
-    b.Size = UDim2.new(0,0,0,3); b.Position = UDim2.new(0,0,0,yOff)
-    b.BackgroundColor3 = Color3.fromRGB(255,80,0); b.BackgroundTransparency = 0.2
-    b.BorderSizePixel = 0; b.ZIndex = 23; return b
+-- Horizontal scan lines (flamefrags edit effect — rapid strobe lines)
+for sl = 1, 8 do
+    local line = Instance.new("Frame", iBg)
+    line.Size = UDim2.new(0,0,0,1)
+    line.Position = UDim2.new(0,0,0, math.floor(sl * 0.12 * 400))
+    line.BackgroundColor3 = Color3.fromRGB(255,80,0)
+    line.BackgroundTransparency = 0.5; line.BorderSizePixel = 0; line.ZIndex = 23
+    task.delay(0.06 + sl*0.018, function()
+        if not line or not line.Parent then return end
+        TweenService:Create(line, TweenInfo.new(0.12, Enum.EasingStyle.Quad), {Size=UDim2.new(1,0,0,1)}):Play()
+        task.delay(0.18, function()
+            if line and line.Parent then
+                TweenService:Create(line, TweenInfo.new(0.1), {BackgroundTransparency=1}):Play()
+            end
+        end)
+    end)
 end
-local bar1 = makeBar(0); local bar2 = makeBar(0)
+
+-- Main title — starts off-screen right, slams in
+local iTxt = Instance.new("TextLabel", iBg)
+iTxt.Size = UDim2.new(1,0,0,90); iTxt.Position = UDim2.new(1,0,0.35,-45)
+iTxt.Text = "FLAMEMANE"; iTxt.Font = Enum.Font.GothamBlack; iTxt.TextSize = 68
+iTxt.TextColor3 = Color3.fromRGB(255,55,0); iTxt.BackgroundTransparency = 1
+iTxt.TextTransparency = 0; iTxt.ZIndex = 24
+iTxt.TextStrokeTransparency = 0.4; iTxt.TextStrokeColor3 = Color3.fromRGB(100,0,0)
+
+-- Sub text
+local iSub = Instance.new("TextLabel", iBg)
+iSub.Size = UDim2.new(1,0,0,24); iSub.Position = UDim2.new(0,0,0.35,52)
+iSub.Text = "THE CHOSEN ONE  •  by FLAMEFAML/STIK"
+iSub.Font = Enum.Font.GothamBold; iSub.TextSize = 13
+iSub.TextColor3 = Color3.fromRGB(255,140,0); iSub.BackgroundTransparency = 1
+iSub.TextTransparency = 1; iSub.ZIndex = 24
+
+-- Vertical slash line (edit-style reveal)
+local slash = Instance.new("Frame", iBg)
+slash.Size = UDim2.fromOffset(3,0); slash.Position = UDim2.fromScale(0.5,0)
+slash.BackgroundColor3 = Color3.fromRGB(255,70,0); slash.BackgroundTransparency = 0
+slash.BorderSizePixel = 0; slash.ZIndex = 26
+
+-- SKIP button
+local skipBtn = Instance.new("TextButton", introGui)
+skipBtn.Size = UDim2.fromOffset(80,28)
+skipBtn.Position = UDim2.new(1,-90,1,-40)
+skipBtn.BackgroundColor3 = Color3.fromRGB(40,10,10)
+skipBtn.Text = "SKIP ▶"; skipBtn.Font = Enum.Font.GothamBold; skipBtn.TextSize = 11
+skipBtn.TextColor3 = Color3.fromRGB(200,80,50); skipBtn.BorderSizePixel = 0
+skipBtn.ZIndex = 100; skipBtn.AutoButtonColor = false
+Instance.new("UICorner", skipBtn).CornerRadius = UDim.new(0,6)
+local skipStroke = Instance.new("UIStroke", skipBtn)
+skipStroke.Color = Color3.fromRGB(200,50,0); skipStroke.Thickness = 1
+
+local introSkipped = false
+local function skipIntro()
+    if introSkipped then return end
+    introSkipped = true
+    introGui:Destroy()
+end
+skipBtn.MouseButton1Click:Connect(skipIntro)
 
 task.spawn(function()
-    -- Quick flash cut 1
-    TweenService:Create(iGlow, TweenInfo.new(0.08), {BackgroundTransparency=0.6}):Play(); task.wait(0.09)
-    TweenService:Create(iGlow, TweenInfo.new(0.1), {BackgroundTransparency=1}):Play(); task.wait(0.12)
-    -- Bar wipe (top)
-    bar1.Position = UDim2.fromOffset(0,0)
-    TweenService:Create(bar1, TweenInfo.new(0.18, Enum.EasingStyle.Quad), {Size=UDim2.new(1,0,0,3)}):Play(); task.wait(0.08)
-    -- Bar wipe (bottom)
-    bar2.Position = UDim2.new(0,0,1,-3)
-    TweenService:Create(bar2, TweenInfo.new(0.18, Enum.EasingStyle.Quad), {Size=UDim2.new(1,0,0,3)}):Play(); task.wait(0.12)
-    -- Typewriter "FLAMEMANE"
-    local full = "FLAMEMANE"; iTxt.TextTransparency = 0
-    for i = 1, #full do
-        iTxt.Text = full:sub(1,i); task.wait(0.055)
+    if introSkipped then return end
+
+    -- Cinematic bars slam in from top and bottom
+    TweenService:Create(topBar, TweenInfo.new(0.12, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+        {Size=UDim2.new(1,0,0,52)}):Play()
+    TweenService:Create(botBar, TweenInfo.new(0.12, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+        {Size=UDim2.new(1,0,0,52), Position=UDim2.new(0,0,1,-52)}):Play()
+    task.wait(0.14); if introSkipped then return end
+
+    -- White flash
+    iFlash.BackgroundColor3 = Color3.new(1,1,1)
+    iFlash.BackgroundTransparency = 0; task.wait(0.03)
+    TweenService:Create(iFlash, TweenInfo.new(0.08), {BackgroundTransparency=1}):Play()
+    task.wait(0.05); if introSkipped then return end
+
+    -- Title slams in from right (fast bounce)
+    TweenService:Create(iTxt, TweenInfo.new(0.14, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
+        {Position=UDim2.new(0,0,0.35,-45)}):Play()
+    task.wait(0.1); if introSkipped then return end
+
+    -- Slash reveal (vertical line wipes down)
+    TweenService:Create(slash, TweenInfo.new(0.1, Enum.EasingStyle.Linear),
+        {Size=UDim2.fromOffset(3,800)}):Play()
+    task.wait(0.12); if introSkipped then return end
+    TweenService:Create(slash, TweenInfo.new(0.1), {BackgroundTransparency=1}):Play()
+
+    -- Subtitle fades in
+    TweenService:Create(iSub, TweenInfo.new(0.18), {TextTransparency=0}):Play()
+    task.wait(0.2); if introSkipped then return end
+
+    -- 4 rapid red flashes (flamefrags strobe effect)
+    for _ = 1, 4 do
+        if introSkipped then return end
+        iFlash.BackgroundColor3 = Color3.fromRGB(200,20,0)
+        TweenService:Create(iFlash, TweenInfo.new(0.03), {BackgroundTransparency=0.55}):Play()
+        task.wait(0.04)
+        TweenService:Create(iFlash, TweenInfo.new(0.05), {BackgroundTransparency=1}):Play()
+        task.wait(0.07)
     end
-    -- Subtitle pop
-    TweenService:Create(iSub, TweenInfo.new(0.22), {TextTransparency=0}):Play(); task.wait(0.28)
-    -- Three fast red flashes (flamefrags edit style)
-    for _ = 1,3 do
-        TweenService:Create(iGlow, TweenInfo.new(0.04), {BackgroundTransparency=0.5}):Play(); task.wait(0.07)
-        TweenService:Create(iGlow, TweenInfo.new(0.06), {BackgroundTransparency=1}):Play(); task.wait(0.1)
+    task.wait(0.25); if introSkipped then return end
+
+    -- Title shake (2px left-right, 3 times — edit impact)
+    for _ = 1, 3 do
+        if introSkipped then return end
+        TweenService:Create(iTxt, TweenInfo.new(0.04), {Position=UDim2.new(0,4,0.35,-45)}):Play(); task.wait(0.04)
+        TweenService:Create(iTxt, TweenInfo.new(0.04), {Position=UDim2.new(0,-4,0.35,-45)}):Play(); task.wait(0.04)
     end
-    task.wait(0.35)
-    -- Burn out: all fades
-    TweenService:Create(iTxt,  TweenInfo.new(0.35), {TextTransparency=1}):Play()
-    TweenService:Create(iSub,  TweenInfo.new(0.35), {TextTransparency=1}):Play()
-    TweenService:Create(iGlow, TweenInfo.new(0.35), {BackgroundTransparency=1}):Play()
-    TweenService:Create(iBg,   TweenInfo.new(0.4),  {BackgroundTransparency=1}):Play()
-    task.wait(0.45); introGui:Destroy()
+    TweenService:Create(iTxt, TweenInfo.new(0.04), {Position=UDim2.new(0,0,0.35,-45)}):Play()
+    task.wait(0.3); if introSkipped then return end
+
+    -- Final burn-out: title flies left, everything fades
+    TweenService:Create(iTxt,  TweenInfo.new(0.22, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
+        {Position=UDim2.new(-1,0,0.35,-45), TextTransparency=1}):Play()
+    TweenService:Create(iSub,  TweenInfo.new(0.2), {TextTransparency=1}):Play()
+    -- Bars retreat
+    TweenService:Create(topBar, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
+        {Size=UDim2.new(1,0,0,0)}):Play()
+    TweenService:Create(botBar, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
+        {Size=UDim2.new(1,0,0,0), Position=UDim2.new(0,0,1,0)}):Play()
+    TweenService:Create(iBg, TweenInfo.new(0.3), {BackgroundTransparency=1}):Play()
+    task.wait(0.35); skipIntro()
 end)
 
 -- ============================================================
@@ -235,7 +316,8 @@ for i, name in ipairs(TAB_NAMES) do
     pg.BackgroundTransparency = 1; pg.BorderSizePixel = 0
     pg.ScrollBarThickness = 3; pg.ScrollBarImageColor3 = C_ACCENT
     pg.CanvasSize = UDim2.fromOffset(0,0); pg.AutomaticCanvasSize = Enum.AutomaticSize.Y
-    pg.Visible = (i==1)
+    pg.Position = (i==1) and UDim2.fromOffset(0,0) or UDim2.fromOffset(9999,0)
+    pg.Visible = true  -- always visible so UIListLayout renders content
     local layout = Instance.new("UIListLayout", pg)
     layout.SortOrder = Enum.SortOrder.LayoutOrder; layout.Padding = UDim.new(0,4)
     local pad = Instance.new("UIPadding", pg)
@@ -261,7 +343,10 @@ local activeTab = 1
 local tabButtons = {}
 
 local function switchTab(idx)
-    for i, pg in ipairs(pageFrames) do pg.Visible = (i==idx) end
+    -- Use position offset NOT Visible — Visible=false breaks UIListLayout rendering
+    for i, pg in ipairs(pageFrames) do
+        pg.Position = (i==idx) and UDim2.fromOffset(0,0) or UDim2.fromOffset(9999,0)
+    end
     for i, btn in ipairs(tabButtons) do
         btn.BackgroundColor3 = (i==idx) and C_ACCENT or C_BG3
         btn.TextColor3 = (i==idx) and C_WHITE or C_DIM
@@ -597,25 +682,29 @@ local function runNuke()
         Right  = bypassText("ADMIN HATES YOU"),
         Left   = bypassText("CRY GGS"),
     }
-    -- Toxic + anchor with retry
-    local maxRetries=8
-    for attempt=1,maxRetries do
+    -- Rapid-fire toxic + anchor: 5 blasts with no wait
+    for _=1,5 do
         pcall(function() remote:FireServer(brick,Enum.NormalId.Top,rootPos,key,blk,"toxic","anchor") end)
-        task.wait(0.3)
         pcall(function() remote:FireServer(brick,Enum.NormalId.Top,rootPos,key,blk,"anchor","") end)
-        task.wait(0.25)
-        local placed=getNearestPlacedBrick()
-        if placed and placed.Anchored then print("[NUKE] Anchor confirmed attempt "..attempt); break end
-        if attempt<maxRetries then print("[NUKE] Retry anchor "..attempt.."/"..maxRetries); task.wait(0.2) end
     end
-    -- Paint faces
+    task.wait(0.05)  -- tiny pause so server processes anchor
+    -- Paint all faces simultaneously (coroutine per face — all fire at once)
+    local done = 0
     for _,n in ipairs(faces) do
         local rawTxt = faceData[n] and faceData[n].txt and faceData[n].txt.Text~="" and faceData[n].txt.Text or (tp[n] or "GGS")
         local ft = bypassText(rawTxt)
         local fc = faceData[n] and faceData[n].clr and faceData[n].clr.BackgroundColor3 or Color3.fromRGB(255,0,0)
-        for _=1,3 do pcall(function() remote:FireServer(brick,faceEnums[n],rootPos,key,fc,"spray",ft) end); task.wait(0.1) end
+        coroutine.wrap(function()
+            pcall(function() remote:FireServer(brick,faceEnums[n],rootPos,key,fc,"spray",ft) end)
+            task.wait(0.02)
+            pcall(function() remote:FireServer(brick,faceEnums[n],rootPos,key,fc,"spray",ft) end)
+            done = done + 1
+        end)()
     end
-    print("[NUKE] Done — TOXIC + ANCHORED")
+    -- Wait until all face coroutines done (max 1s)
+    local t0 = tick()
+    repeat task.wait(0) until done >= #faces or tick()-t0 > 1
+    print("[NUKE] Done — TOXIC + ANCHORED (fast)")
 end
 
 -- FIX
@@ -629,25 +718,25 @@ local function runFix()
     local remote,rootPos=getPaintRemote(); local brick=getBrick()
     if not remote or not brick then print("[FIX] missing tools"); return end
     local key="both \u{1F91D}"
-    local maxRetries=8
-    for attempt=1,maxRetries do
+    -- Rapid-fire unanchor+plastic: 5 blasts no wait
+    for _=1,5 do
         pcall(function() remote:FireServer(brick,Enum.NormalId.Top,rootPos,key,LIGHT_GRAY,"plastic","unanchor") end)
-        task.wait(0.3)
         pcall(function() remote:FireServer(brick,Enum.NormalId.Top,rootPos,key,LIGHT_GRAY,"unanchor","") end)
-        task.wait(0.3)
-        local placed=getNearestPlacedBrick()
-        if placed and not placed.Anchored then print("[FIX] Unanchor confirmed attempt "..attempt); break end
-        if attempt<maxRetries then
-            print("[FIX] Retry unanchor "..attempt.."/"..maxRetries)
-            pcall(function() remote:FireServer(brick,Enum.NormalId.Top,rootPos,key,LIGHT_GRAY,"unanchor","") end)
-            task.wait(0.3)
-        end
     end
-    -- Untoxic: spray light gray + empty text on all faces
+    task.wait(0.05)
+    -- Clear all faces simultaneously (coroutine per face)
+    local done = 0
     for _,n in ipairs(faces) do
-        for _=1,2 do pcall(function() remote:FireServer(brick,faceEnums[n],rootPos,key,LIGHT_GRAY,"spray","") end); task.wait(0.08) end
+        coroutine.wrap(function()
+            pcall(function() remote:FireServer(brick,faceEnums[n],rootPos,key,LIGHT_GRAY,"spray","") end)
+            task.wait(0.02)
+            pcall(function() remote:FireServer(brick,faceEnums[n],rootPos,key,LIGHT_GRAY,"spray","") end)
+            done = done + 1
+        end)()
     end
-    print("[FIX] Done — PLASTIC + UNANCHOR + LIGHT GRAY")
+    local t0 = tick()
+    repeat task.wait(0) until done >= #faces or tick()-t0 > 1
+    print("[FIX] Done — PLASTIC + UNANCHOR + UNTOXIC (fast)")
 end
 
 -- BKIT destroyer
