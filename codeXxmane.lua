@@ -45,7 +45,7 @@ gui.Name = "SimpleHub"
 gui.ResetOnSpawn = false
 
 local frame = Instance.new("Frame", gui)
-frame.Size             = UDim2.fromOffset(680, 490)
+frame.Size             = UDim2.fromOffset(700, 560)
 frame.Position         = UDim2.fromScale(0.5, 0.5)
 frame.AnchorPoint      = Vector2.new(0.5, 0.5)
 frame.BackgroundColor3 = Color3.fromRGB(30, 30, 50)
@@ -264,7 +264,8 @@ sideScroll.Size                = UDim2.new(1,0,1,-8)
 sideScroll.Position            = UDim2.fromOffset(0,4)
 sideScroll.BackgroundTransparency = 1
 sideScroll.BorderSizePixel     = 0
-sideScroll.ScrollBarThickness  = 0
+sideScroll.ScrollBarThickness  = 2
+sideScroll.ScrollBarImageColor3 = Color3.fromRGB(60,60,100)
 sideScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
 sideScroll.CanvasSize          = UDim2.new(0,0,0,0)
 local sideLayout = Instance.new("UIListLayout", sideScroll)
@@ -478,8 +479,8 @@ end
 local pageContainers = {}
 for i = 1, #pages do
     local sf = Instance.new("ScrollingFrame", frame)
-    sf.Size                  = UDim2.fromOffset(556, 478)
-    sf.Position              = UDim2.fromOffset(116, 4)
+    sf.Size                  = UDim2.fromOffset(572, 548)
+    sf.Position              = UDim2.fromOffset(120, 4)
     sf.BackgroundTransparency = 1
     sf.BorderSizePixel       = 0
     sf.ScrollBarThickness    = 3
@@ -513,7 +514,7 @@ end
 -- Build sidebar tab buttons after pageContainers exist
 for i, name in ipairs(pages) do
     local btn = Instance.new("TextButton", sideScroll)
-    btn.Size             = UDim2.fromOffset(100, 28)
+    btn.Size             = UDim2.fromOffset(104, 34)
     btn.BackgroundColor3 = Color3.fromRGB(28,28,46)
     btn.Text             = name
     btn.Font             = Enum.Font.GothamBold
@@ -860,6 +861,7 @@ end
 -- FIX -- with retry until brick confirms UNANCHORED
 -- ============================================================
 local function runFix()
+    -- Clear UI
     for _, n in ipairs(faces) do
         if faceData[n] then
             faceData[n].txt.Text = ""
@@ -869,15 +871,24 @@ local function runFix()
     local remote, rootPos = getPaintRemote(); local brick = getBrick()
     if not remote or not brick then print("[FIX] missing tools"); return end
     local key = "both 🤝"
-    -- Fire unanchor+plastic 4 times, no retry loop (loop was re-anchoring)
+    -- Fire unanchor + plastic on EVERY face (4 blasts per face so server can't miss)
+    -- This clears the toxic spray text AND sets material back AND unanchors
     for _ = 1, 4 do
-        pcall(function() remote:FireServer(brick, Enum.NormalId.Top, rootPos, key, LIGHT_GRAY, "unanchor", "") end)
-        pcall(function() remote:FireServer(brick, Enum.NormalId.Top, rootPos, key, LIGHT_GRAY, "plastic", "unanchor") end)
+        for _, n in ipairs(faces) do
+            pcall(function() remote:FireServer(brick, faceEnums[n], rootPos, key, LIGHT_GRAY, "plastic", "unanchor") end)
+        end
     end
-    -- Clear all faces
-    for _, n in ipairs(faces) do
-        pcall(function() remote:FireServer(brick, faceEnums[n], rootPos, key, LIGHT_GRAY, "spray", "") end)
-        pcall(function() remote:FireServer(brick, faceEnums[n], rootPos, key, LIGHT_GRAY, "spray", "") end)
+    -- Extra unanchor-only pass on all faces to make sure anchor state is cleared
+    for _ = 1, 2 do
+        for _, n in ipairs(faces) do
+            pcall(function() remote:FireServer(brick, faceEnums[n], rootPos, key, LIGHT_GRAY, "unanchor", "") end)
+        end
+    end
+    -- Clear spray text on every face (empty string spray = removes toxic text)
+    for _ = 1, 3 do
+        for _, n in ipairs(faces) do
+            pcall(function() remote:FireServer(brick, faceEnums[n], rootPos, key, LIGHT_GRAY, "spray", "") end)
+        end
     end
     print("[FIX] Done")
 end
