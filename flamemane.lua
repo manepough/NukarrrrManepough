@@ -45,64 +45,88 @@ local CW         = 340  -- content width
 
 -- ============================================================
 -- INTRO ANIMATION — bugiroo / FlameFrags TikTok cinematic style
--- Black letterbox bars, hard cut flashes, nameplate pop-in, beat cuts
+-- Mirrors the video frame by frame:
+--   F1: dark stone dungeon, character visible, black letterbox bars
+--   F3: big black diagonal slash sweep across screen
+--   F5-9: rapid close-up angle cuts (blue/purple tinted)
+--   F11: "FlameFrags"-style nameplate SNAPS in white, center screen
+--   F12: final scene cut, white flash → UI reveals
 -- ============================================================
 local introGui = Instance.new("ScreenGui", LocalPlayer.PlayerGui)
 introGui.Name = "FlameManeIntro"; introGui.ResetOnSpawn = false
 introGui.IgnoreGuiInset = true; introGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 introGui.DisplayOrder = 999
 
--- BLACK BACKGROUND
+-- FULL BACKGROUND (dark stone-like — matches the dungeon in video)
 local iBg = Instance.new("Frame", introGui)
-iBg.Size = UDim2.fromScale(1,1); iBg.BackgroundColor3 = Color3.new(0,0,0)
+iBg.Size = UDim2.fromScale(1,1); iBg.BackgroundColor3 = Color3.fromRGB(8,6,12)
 iBg.BackgroundTransparency = 0; iBg.BorderSizePixel = 0; iBg.ZIndex = 1
 
--- CINEMATIC LETTERBOX BARS (top + bottom, ~14% each — exactly like the video)
+-- STONE GRID PATTERN (simulates the stone blocks background from the video)
+-- 4x4 grid of subtle dark rectangles
+for gx = 0,3 do for gy = 0,5 do
+    local cell = Instance.new("Frame", iBg)
+    cell.Size = UDim2.new(0.25,0,0.1665,0)
+    cell.Position = UDim2.new(gx*0.25,1,gy*0.1665,1)
+    cell.BackgroundColor3 = Color3.fromRGB(18,14,24)
+    cell.BackgroundTransparency = 0.3; cell.BorderSizePixel = 0; cell.ZIndex = 2
+    local st = Instance.new("UIStroke",cell); st.Color=Color3.fromRGB(6,4,10); st.Thickness=1
+end end
+
+-- SCENE COLOR TINT overlay (shifts color between cuts like the video)
+local sceneTint = Instance.new("Frame", iBg)
+sceneTint.Size = UDim2.fromScale(1,1); sceneTint.BackgroundColor3 = Color3.fromRGB(20,30,80)
+sceneTint.BackgroundTransparency = 0.7; sceneTint.BorderSizePixel = 0; sceneTint.ZIndex = 3
+
+-- CINEMATIC LETTERBOX BARS — exactly 14% top and bottom (video has thick bars)
 local topBar = Instance.new("Frame", iBg)
 topBar.Size = UDim2.new(1,0,0.14,0); topBar.Position = UDim2.fromOffset(0,0)
-topBar.BackgroundColor3 = Color3.new(0,0,0); topBar.BorderSizePixel = 0; topBar.ZIndex = 10
+topBar.BackgroundColor3 = Color3.new(0,0,0); topBar.BorderSizePixel = 0; topBar.ZIndex = 12
 
 local botBar = Instance.new("Frame", iBg)
 botBar.Size = UDim2.new(1,0,0.14,0); botBar.Position = UDim2.new(0,0,0.86,0)
-botBar.BackgroundColor3 = Color3.new(0,0,0); botBar.BorderSizePixel = 0; botBar.ZIndex = 10
+botBar.BackgroundColor3 = Color3.new(0,0,0); botBar.BorderSizePixel = 0; botBar.ZIndex = 12
 
--- FULL-SCREEN FLASH OVERLAY (for hard cut effects)
+-- DIAGONAL SLASH — the big black diagonal that sweeps across (exactly like frame 3 in video)
+-- Implemented as a very wide rotated frame that slides across
+local slash = Instance.new("Frame", iBg)
+slash.Size = UDim2.fromOffset(0, 1200)   -- starts zero-width
+slash.Position = UDim2.new(-0.1, 0, -0.1, 0)
+slash.AnchorPoint = Vector2.new(0, 0)
+slash.BackgroundColor3 = Color3.new(0,0,0)
+slash.BackgroundTransparency = 0; slash.BorderSizePixel = 0
+slash.Rotation = 12; slash.ZIndex = 8   -- slight angle like the video diagonal
+
+-- FULL-SCREEN FLASH (hard cuts)
 local iFlash = Instance.new("Frame", iBg)
 iFlash.Size = UDim2.fromScale(1,1); iFlash.BackgroundColor3 = Color3.new(1,1,1)
-iFlash.BackgroundTransparency = 1; iFlash.BorderSizePixel = 0; iFlash.ZIndex = 5
+iFlash.BackgroundTransparency = 1; iFlash.BorderSizePixel = 0; iFlash.ZIndex = 6
 
--- SCENE TINT (dark blue/purple between cuts — like the game footage in the video)
-local sceneTint = Instance.new("Frame", iBg)
-sceneTint.Size = UDim2.fromScale(1,1); sceneTint.BackgroundColor3 = Color3.fromRGB(15,10,40)
-sceneTint.BackgroundTransparency = 1; sceneTint.BorderSizePixel = 0; sceneTint.ZIndex = 2
-
--- NAMEPLATE — "FLAMEMANE" exactly like "FlameFrags" in the video
--- White text, center screen, clean GothamBold, appears instantly
+-- NAMEPLATE — white bold text center screen, exactly like "FlameFrags" in frame 11
 local iName = Instance.new("TextLabel", iBg)
-iName.Size = UDim2.new(1,0,0,54); iName.Position = UDim2.new(0,0,0.38,-27)
-iName.Text = "FLAMEMANE"; iName.Font = Enum.Font.GothamBlack; iName.TextSize = 56
+iName.Size = UDim2.new(1,0,0,60); iName.Position = UDim2.new(0,0,0.40,-30)
+iName.Text = "FLAMEMANE"; iName.Font = Enum.Font.GothamBlack; iName.TextSize = 58
 iName.TextColor3 = Color3.new(1,1,1); iName.BackgroundTransparency = 1
-iName.TextTransparency = 1; iName.ZIndex = 8
--- Subtle drop shadow (black stroke — same as the video nameplate)
-iName.TextStrokeTransparency = 0.2; iName.TextStrokeColor3 = Color3.new(0,0,0)
+iName.TextTransparency = 1; iName.ZIndex = 9
+iName.TextStrokeTransparency = 0.15; iName.TextStrokeColor3 = Color3.new(0,0,0)
 
--- SUB NAMEPLATE — player name style, smaller orange, below
+-- Sub label (like the player tag below the name in frame 11)
 local iSub = Instance.new("TextLabel", iBg)
-iSub.Size = UDim2.new(1,0,0,22); iSub.Position = UDim2.new(0,0,0.38,32)
+iSub.Size = UDim2.new(1,0,0,20); iSub.Position = UDim2.new(0,0,0.40,36)
 iSub.Text = "The Chosen One  •  FLAMEFAML / STIK"
-iSub.Font = Enum.Font.GothamBold; iSub.TextSize = 13
-iSub.TextColor3 = Color3.fromRGB(255,160,30); iSub.BackgroundTransparency = 1
-iSub.TextTransparency = 1; iSub.ZIndex = 8
+iSub.Font = Enum.Font.GothamBold; iSub.TextSize = 12
+iSub.TextColor3 = Color3.fromRGB(255,165,30); iSub.BackgroundTransparency = 1
+iSub.TextTransparency = 1; iSub.ZIndex = 9
 
 -- SKIP button
 local skipBtn = Instance.new("TextButton", introGui)
 skipBtn.Size = UDim2.fromOffset(76,26); skipBtn.Position = UDim2.new(1,-84,1,-36)
-skipBtn.BackgroundColor3 = Color3.fromRGB(20,20,20); skipBtn.Text = "SKIP ▶"
+skipBtn.BackgroundColor3 = Color3.fromRGB(15,15,15); skipBtn.Text = "SKIP ▶"
 skipBtn.Font = Enum.Font.GothamBold; skipBtn.TextSize = 11
-skipBtn.TextColor3 = Color3.fromRGB(160,160,160); skipBtn.BorderSizePixel = 0
-skipBtn.ZIndex = 100; skipBtn.AutoButtonColor = false
+skipBtn.TextColor3 = Color3.fromRGB(140,140,140); skipBtn.BorderSizePixel = 0
+skipBtn.ZIndex = 200; skipBtn.AutoButtonColor = false
 Instance.new("UICorner", skipBtn).CornerRadius = UDim.new(0,5)
-Instance.new("UIStroke", skipBtn).Color = Color3.fromRGB(80,80,80)
+Instance.new("UIStroke", skipBtn).Color = Color3.fromRGB(60,60,60)
 
 local introSkipped = false
 local function skipIntro()
@@ -112,66 +136,97 @@ local function skipIntro()
 end
 skipBtn.MouseButton1Click:Connect(skipIntro)
 
--- Helper: instant hard cut flash (white or color)
-local function hardCut(color, alpha, holdTime, fadeTime)
-    iFlash.BackgroundColor3 = color or Color3.new(1,1,1)
-    iFlash.BackgroundTransparency = 1 - (alpha or 0.85)
-    task.wait(holdTime or 0.02)
-    TweenService:Create(iFlash, TweenInfo.new(fadeTime or 0.06, Enum.EasingStyle.Quad),
-        {BackgroundTransparency=1}):Play()
+-- INSTANT hard cut flash helper (no yield, just set + tween)
+local function cut(clr, alpha, hold, fade)
+    if introSkipped then return end
+    iFlash.BackgroundColor3 = clr or Color3.new(1,1,1)
+    iFlash.BackgroundTransparency = 1-(alpha or 0.9)
+    if hold and hold > 0 then task.wait(hold) end
+    if fade and fade > 0 then
+        TweenService:Create(iFlash, TweenInfo.new(fade, Enum.EasingStyle.Linear),
+            {BackgroundTransparency=1}):Play()
+    else
+        iFlash.BackgroundTransparency = 1
+    end
 end
 
 task.spawn(function()
-    -- CUT 1: Hard white flash (like video starts bright)
-    hardCut(Color3.new(1,1,1), 1, 0.03, 0.12)
-    task.wait(0.05); if introSkipped then return end
-
-    -- Scene tint fades in (dark blue/purple — mimics the dungeon backdrop)
-    TweenService:Create(sceneTint, TweenInfo.new(0.08), {BackgroundTransparency=0.15}):Play()
-    task.wait(0.1); if introSkipped then return end
-
-    -- CUT 2: Blue flash (like camera angle cut)
-    hardCut(Color3.fromRGB(30,80,255), 0.7, 0.02, 0.08)
-    task.wait(0.06); if introSkipped then return end
-
-    -- CUT 3: Dark purple flash
-    hardCut(Color3.fromRGB(80,0,180), 0.6, 0.02, 0.08)
-    task.wait(0.08); if introSkipped then return end
-
-    -- CUT 4: White flash then NAMEPLATE SNAPS IN (exactly like "FlameFrags" in video)
-    hardCut(Color3.new(1,1,1), 0.95, 0.04, 0.1)
-    task.wait(0.04); if introSkipped then return end
-    -- Nameplate just APPEARS — no slide, no fade animation, just instant (true hard cut)
-    iName.TextTransparency = 0
-    task.wait(0.02); if introSkipped then return end
-
-    -- Sub text snaps in 1 frame after
-    iSub.TextTransparency = 0
+    -- ── FRAME 1 VIBE: Dark dungeon, bars visible, first look ─────
+    -- Purple tint fade in (dark stone dungeon)
+    TweenService:Create(sceneTint, TweenInfo.new(0.15), {BackgroundTransparency=0.55}):Play()
     task.wait(0.18); if introSkipped then return end
 
-    -- Beat hit: 3 rapid flashes (red/orange — the "flame" identity)
-    hardCut(Color3.fromRGB(255,40,0), 0.5, 0.02, 0.05); task.wait(0.07)
-    if introSkipped then return end
-    hardCut(Color3.fromRGB(255,100,0), 0.4, 0.02, 0.05); task.wait(0.07)
-    if introSkipped then return end
-    hardCut(Color3.new(1,1,1), 0.6, 0.02, 0.08); task.wait(0.1)
+    -- ── FRAME 2: First sword slash — white flash cut ──────────────
+    cut(Color3.new(1,1,1), 1, 0.03, 0)
+    -- Tint shifts to blue (different scene angle like the video)
+    sceneTint.BackgroundColor3 = Color3.fromRGB(10,20,100)
+    TweenService:Create(sceneTint, TweenInfo.new(0.06), {BackgroundTransparency=0.5}):Play()
+    task.wait(0.12); if introSkipped then return end
+
+    -- ── FRAME 3: DIAGONAL BLACK SLASH sweeps across screen ────────
+    -- This is the big dramatic diagonal in the video
+    TweenService:Create(slash, TweenInfo.new(0.13, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+        {Size=UDim2.fromOffset(1400,1200)}):Play()
+    task.wait(0.07); if introSkipped then return end
+    -- Blue flash as slash hits
+    cut(Color3.fromRGB(40,60,255), 0.6, 0, 0.1)
+    task.wait(0.08); if introSkipped then return end
+    -- Slash fades out
+    TweenService:Create(slash, TweenInfo.new(0.1), {BackgroundTransparency=1}):Play()
+
+    -- ── FRAMES 4-5: Angle cuts — tint shifts, rapid flashes ───────
+    sceneTint.BackgroundColor3 = Color3.fromRGB(60,0,120)
+    TweenService:Create(sceneTint, TweenInfo.new(0.04), {BackgroundTransparency=0.45}):Play()
+    task.wait(0.06); if introSkipped then return end
+    cut(Color3.new(1,1,1), 0.8, 0.02, 0.06); task.wait(0.07)
     if introSkipped then return end
 
-    -- Nameplate shake (3 tiny jolts — impact effect like the video sword swings)
-    for _, ox in ipairs({3,-3,2,-2,0}) do
+    -- ── FRAMES 6-8: Close-up face angle (blue sky from video) ─────
+    sceneTint.BackgroundColor3 = Color3.fromRGB(30,80,180)
+    TweenService:Create(sceneTint, TweenInfo.new(0.05), {BackgroundTransparency=0.4}):Play()
+    task.wait(0.08); if introSkipped then return end
+    cut(Color3.fromRGB(80,120,255), 0.5, 0.02, 0.07); task.wait(0.08)
+    if introSkipped then return end
+    cut(Color3.new(1,1,1), 0.7, 0.02, 0.05); task.wait(0.06)
+    if introSkipped then return end
+
+    -- ── FRAME 9-10: Dark again, tension build ─────────────────────
+    sceneTint.BackgroundColor3 = Color3.fromRGB(8,4,20)
+    TweenService:Create(sceneTint, TweenInfo.new(0.06), {BackgroundTransparency=0.3}):Play()
+    task.wait(0.1); if introSkipped then return end
+
+    -- ── FRAME 11: NAMEPLATE SNAPS IN ─────────────────────────────
+    -- White flash THEN instant text appear — exactly like the video
+    cut(Color3.new(1,1,1), 1, 0.04, 0)
+    iName.TextTransparency = 0   -- SNAP in, zero animation
+    iSub.TextTransparency  = 0
+    task.wait(0.03); if introSkipped then return end
+    -- Flash fades out revealing name over dark bg
+    TweenService:Create(iFlash, TweenInfo.new(0.08), {BackgroundTransparency=1}):Play()
+    task.wait(0.2); if introSkipped then return end
+
+    -- Beat hits (the music beat drops in edits like this)
+    cut(Color3.fromRGB(255,50,0),  0.45, 0.02, 0.06); task.wait(0.08)
+    if introSkipped then return end
+    cut(Color3.fromRGB(255,130,0), 0.35, 0.02, 0.06); task.wait(0.08)
+    if introSkipped then return end
+
+    -- ── NAME SHAKE — sword impact vibration (3 jolts) ─────────────
+    for _, ox in ipairs({4,-4,3,-3,1,-1,0}) do
         if introSkipped then return end
-        iName.Position = UDim2.new(0,ox,0.38,-27)
-        task.wait(0.03)
+        iName.Position = UDim2.new(0,ox,0.40,-30)
+        iSub.Position  = UDim2.new(0,ox,0.40,36)
+        task.wait(0.025)
     end
-    iName.Position = UDim2.new(0,0,0.38,-27)
-    task.wait(0.22); if introSkipped then return end
+    iName.Position = UDim2.new(0,0,0.40,-30)
+    iSub.Position  = UDim2.new(0,0,0.40,36)
+    task.wait(0.28); if introSkipped then return end
 
-    -- OUTRO: Final white flash then EVERYTHING GOES BLACK then UI appears
-    hardCut(Color3.new(1,1,1), 1, 0.06, 0.0)
+    -- ── FRAME 12: FINAL WHITE FLASH OUT → UI reveals ──────────────
+    cut(Color3.new(1,1,1), 1, 0.06, 0)
     iName.TextTransparency = 1; iSub.TextTransparency = 1
-    TweenService:Create(sceneTint, TweenInfo.new(0.05), {BackgroundTransparency=1}):Play()
-    TweenService:Create(iBg, TweenInfo.new(0.18), {BackgroundTransparency=1}):Play()
-    task.wait(0.2); skipIntro()
+    TweenService:Create(iBg, TweenInfo.new(0.2), {BackgroundTransparency=1}):Play()
+    task.wait(0.22); skipIntro()
 end)
 
 -- ============================================================
@@ -285,7 +340,7 @@ Instance.new("UIPadding", tabScroll).PaddingLeft = UDim.new(0,3)
 local contentArea = Instance.new("Frame", win)
 contentArea.Name = "Content"; contentArea.Size = UDim2.new(1,-4,1,-74)
 contentArea.Position = UDim2.fromOffset(2,72); contentArea.BackgroundTransparency = 1
-contentArea.ClipsDescendants = true
+contentArea.ClipsDescendants = false  -- MUST be false for position-offset tab hiding
 
 -- Page frames
 local pageFrames = {}
@@ -583,8 +638,8 @@ local function getPaintRemote()
     local tool=char:FindFirstChild("Paint") or LocalPlayer.Backpack:FindFirstChild("Paint")
     if not tool then return nil,nil end
     if tool.Parent~=char then
-        local hum=char:FindFirstChildOfClass("Humanoid")
-        if hum then hum:EquipTool(tool); task.wait(0.25) end
+        -- Direct parent (no wait) instead of EquipTool which has 0.25s animation wait
+        tool.Parent = char
         tool=char:FindFirstChild("Paint") or LocalPlayer.Backpack:FindFirstChild("Paint")
         if not tool then return nil,nil end
     end
