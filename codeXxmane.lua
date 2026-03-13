@@ -93,20 +93,81 @@ UserInputService.InputEnded:Connect(function(input)
     end
 end)
 
--- Click to toggle visibility
-local uiVisible = true
+-- Click to toggle visibility — saves size so toggling never resets it
+local uiVisible   = true
+local savedSize   = frame.Size  -- always tracks last known size
+
 toggleBtn.MouseButton1Click:Connect(function()
     uiVisible = not uiVisible
-    TweenService:Create(frame, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-        Size = uiVisible and UDim2.fromOffset(600, 400) or UDim2.fromOffset(0, 0),
-        BackgroundTransparency = uiVisible and 0 or 1
-    }):Play()
-    frame.Visible = uiVisible
-    toggleBtn.Text             = uiVisible and "M" or "M"
-    toggleBtn.BackgroundColor3 = uiVisible and Color3.fromRGB(30, 30, 50) or Color3.fromRGB(11, 70, 180)
+    if uiVisible then
+        frame.Visible = true
+        TweenService:Create(frame, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+            Size = savedSize,
+            BackgroundTransparency = 0
+        }):Play()
+    else
+        savedSize = frame.Size  -- save current size before hiding
+        TweenService:Create(frame, TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+            Size = UDim2.fromOffset(savedSize.X.Offset, 0),
+            BackgroundTransparency = 1
+        }):Play()
+        task.delay(0.18, function() if not uiVisible then frame.Visible = false end end)
+    end
+    toggleBtn.BackgroundColor3 = uiVisible and Color3.fromRGB(30,30,50) or Color3.fromRGB(11,70,180)
     TweenService:Create(toggleStroke, TweenInfo.new(0.2), {
-        Color = uiVisible and Color3.fromRGB(11, 95, 226) or Color3.fromRGB(200, 200, 255)
+        Color = uiVisible and Color3.fromRGB(11,95,226) or Color3.fromRGB(200,200,255)
     }):Play()
+end)
+
+-- ── RESIZE HANDLE (bottom-right corner drag) ─────────────────
+local resizeHandle = Instance.new("TextButton", frame)
+resizeHandle.Size             = UDim2.fromOffset(18, 18)
+resizeHandle.Position         = UDim2.new(1,-18, 1,-18)
+resizeHandle.AnchorPoint      = Vector2.new(0,0)
+resizeHandle.BackgroundColor3 = Color3.fromRGB(60,60,90)
+resizeHandle.BorderSizePixel  = 0
+resizeHandle.Text             = ""
+resizeHandle.ZIndex           = 20
+resizeHandle.AutoButtonColor  = false
+Instance.new("UICorner", resizeHandle).CornerRadius = UDim.new(0,4)
+-- small diagonal lines to hint it's draggable
+local rhLabel = Instance.new("TextLabel", resizeHandle)
+rhLabel.Size = UDim2.fromScale(1,1); rhLabel.BackgroundTransparency = 1
+rhLabel.Text = "⠿"; rhLabel.Font = Enum.Font.Gotham; rhLabel.TextSize = 12
+rhLabel.TextColor3 = Color3.fromRGB(120,120,160); rhLabel.ZIndex = 21
+
+local resizing      = false
+local resizeStart   = nil
+local resizeOrigSz  = nil
+local minW, minH    = 300, 260
+
+resizeHandle.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1
+    or input.UserInputType == Enum.UserInputType.Touch then
+        resizing     = true
+        resizeStart  = input.Position
+        resizeOrigSz = frame.AbsoluteSize
+    end
+end)
+UserInputService.InputChanged:Connect(function(input)
+    if resizing and (input.UserInputType == Enum.UserInputType.MouseMovement
+    or input.UserInputType == Enum.UserInputType.Touch) then
+        local delta = input.Position - resizeStart
+        local newW  = math.max(minW, resizeOrigSz.X + delta.X)
+        local newH  = math.max(minH, resizeOrigSz.Y + delta.Y)
+        frame.Size  = UDim2.fromOffset(newW, newH)
+        savedSize   = frame.Size
+        -- keep page containers filling the right area
+        for _, sf in ipairs(pageContainers) do
+            sf.Size = UDim2.fromOffset(newW - 128, newH - 8)
+        end
+    end
+end)
+UserInputService.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1
+    or input.UserInputType == Enum.UserInputType.Touch then
+        resizing = false
+    end
 end)
 
 ------------------------
@@ -688,17 +749,23 @@ local faceData   = {}
 local LIGHT_GRAY = Color3.fromRGB(200, 200, 200)
 
 local function getPaintRemote()
-    local char=LocalPlayer.Character; if not char then return nil,nil end
-    local hrp=char:FindFirstChild("HumanoidRootPart"); if not hrp then return nil,nil end
-    local tool=char:FindFirstChild("Paint") or LocalPlayer.Backpack:FindFirstChild("Paint")
-    if not tool then return nil,nil end
-    if tool.Parent~=char then
-        local hum=char:FindFirstChildOfClass("Humanoid")
-        if hum then hum:EquipTool(tool); task.wait(0.25) end
-        tool=char:FindFirstChild("Paint") or LocalPlayer.Backpack:FindFirstChild("Paint")
-        if not tool then return nil,nil end
+    local char = LocalPlayer.Character
+    if not char then return nil, nil end
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    if not hrp then return nil, nil end
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    -- Find the tool in backpack or char
+    local tool = char:FindFirstChild("Paint") or LocalPlayer.Backpack:FindFirstChild("Paint")
+    if not tool then return nil, nil end
+    -- Equip it if not already equipped
+    if tool.Parent ~= char and hum then
+        hum:EquipTool(tool)
+        task.wait(0.2)  -- exactly like the reference script
     end
-    local remote=tool:FindFirstChild("Event",true) or tool:FindFirstChildWhichIsA("RemoteEvent",true)
+    tool = char:FindFirstChild("Paint") or LocalPlayer.Backpack:FindFirstChild("Paint")
+    if not tool then return nil, nil end
+    local remote = tool:FindFirstChild("Event", true) or tool:FindFirstChildWhichIsA("RemoteEvent", true)
+    if not remote then return nil, nil end
     return remote, hrp.Position
 end
 local function getBrick() return ReplicatedStorage:FindFirstChild("Brick") end
@@ -800,96 +867,76 @@ end
 -- NUKE -- with retry until brick confirms TOXIC + ANCHORED
 -- ============================================================
 local function runNuke()
-    local remote, rootPos = getPaintRemote(); local brick = getBrick()
-    if not remote or not brick then print("[NUKE] missing tools"); return end
+    local remote, rootPos = getPaintRemote()
+    local brick = getBrick()
+    if not remote or not brick then print("[NUKE] missing Paint tool or Brick"); return end
 
     local key = "both 🤝"
     local blk = Color3.new(0, 0, 0)
 
-    -- Default toxic texts -- every letter auto-bypassed
-    local tp = {
-        Front  = bypassText("Fuck Admin"),
-        Back   = bypassText("say i eat pussy"),
-        Top    = bypassText("hacked by FLAMEFAML/STIK"),
-        Bottom = bypassText("GGS BIG W TO STIK"),
-        Right  = bypassText("ADMIN HATES NIGGER"),
-        Left   = bypassText("CRY GGS"),
+    -- Default face texts (use custom if set in UI, else use defaults)
+    local defaultTexts = {
+        Front  = "Fuck Admin",
+        Back   = "say i eat pussy",
+        Top    = "hacked by FLAMEFAML/STIK",
+        Bottom = "GGS BIG W TO STIK",
+        Right  = "ADMIN HATES YOU",
+        Left   = "CRY GGS",
     }
 
-    -- STEP 1: Fire toxic + anchor, retry until confirmed
-    local maxRetries = 8
-    for attempt = 1, maxRetries do
-        pcall(function() remote:FireServer(brick, Enum.NormalId.Top, rootPos, key, blk, "toxic", "anchor") end)
-        task.wait(0.3)
-        pcall(function() remote:FireServer(brick, Enum.NormalId.Top, rootPos, key, blk, "anchor", "") end)
-        task.wait(0.25)
+    -- Step 1: Base paint — toxic material + anchor (same as reference script)
+    remote:FireServer(brick, Enum.NormalId.Top, rootPos, key, blk, "toxic", "anchor")
+    task.wait(0.4)
 
-        -- Verify: check nearest placed brick
-        local placed = getNearestPlacedBrick()
-        if placed then
-            local isToxic    = placed.Material == Enum.Material.SmoothPlastic or placed.Material == Enum.Material.Neon -- game-specific, best effort
-            local isAnchored = placed.Anchored
-            if isAnchored then
-                print("[NUKE] Anchor confirmed on attempt "..attempt)
-                break
-            else
-                print("[NUKE] Not anchored yet -- retry "..attempt.."/"..maxRetries)
-                task.wait(0.2)
-            end
-        else
-            -- No brick found to verify, just proceed
-            break
-        end
-    end
-
-    -- STEP 2: Paint faces -- auto-bypass via TextService retry
+    -- Step 2: Spray all 6 faces with text (0.1s gap like reference script)
     for _, n in ipairs(faces) do
-        local rawTxt = faceData[n] and faceData[n].txt.Text ~= "" and faceData[n].txt.Text or (tp[n] or "GGS")
-        -- Smart bypass: checks with Roblox TextService, retries until not filtered
+        local rawTxt = (faceData[n] and faceData[n].txt and faceData[n].txt.Text ~= "" and faceData[n].txt.Text)
+                       or defaultTexts[n] or "GGS"
         local ft = bypassText(rawTxt)
-        local fc = faceData[n] and faceData[n].clr.BackgroundColor3 or Color3.fromRGB(255, 0, 0)
-        for attempt = 1, 3 do
-            pcall(function() remote:FireServer(brick, faceEnums[n], rootPos, key, fc, "spray", ft) end)
-            task.wait(0.12)
-            if attempt < 3 then task.wait(0.05) end
-        end
+        local fc = (faceData[n] and faceData[n].clr and faceData[n].clr.BackgroundColor3) or Color3.fromRGB(255,0,0)
+        remote:FireServer(brick, faceEnums[n], rootPos, key, fc, "spray", ft)
+        task.wait(0.1)
     end
-    print("[NUKE] Done -- TOXIC + ANCHORED")
+
+    -- Step 3: Final anchor lock to make sure it sticks
+    remote:FireServer(brick, Enum.NormalId.Top, rootPos, key, blk, "anchor", "")
+    print("[NUKE] Done")
 end
 
 -- ============================================================
 -- FIX -- with retry until brick confirms UNANCHORED
 -- ============================================================
 local function runFix()
-    -- Clear UI
+    -- Clear UI face data
     for _, n in ipairs(faces) do
         if faceData[n] then
-            faceData[n].txt.Text = ""
-            faceData[n].clr.BackgroundColor3 = LIGHT_GRAY
+            if faceData[n].txt then faceData[n].txt.Text = "" end
+            if faceData[n].clr then faceData[n].clr.BackgroundColor3 = LIGHT_GRAY end
         end
     end
-    local remote, rootPos = getPaintRemote(); local brick = getBrick()
-    if not remote or not brick then print("[FIX] missing tools"); return end
+
+    local remote, rootPos = getPaintRemote()
+    local brick = getBrick()
+    if not remote or not brick then print("[FIX] missing Paint tool or Brick"); return end
+
     local key = "both 🤝"
-    -- Fire unanchor + plastic on EVERY face (4 blasts per face so server can't miss)
-    -- This clears the toxic spray text AND sets material back AND unanchors
-    for _ = 1, 4 do
-        for _, n in ipairs(faces) do
-            pcall(function() remote:FireServer(brick, faceEnums[n], rootPos, key, LIGHT_GRAY, "plastic", "unanchor") end)
-        end
+
+    -- Step 1: Base paint — plastic material (untoxic), same as reference script
+    remote:FireServer(brick, Enum.NormalId.Top, rootPos, key, LIGHT_GRAY, "plastic", "")
+    task.wait(0.4)
+
+    -- Step 2: Spray all 6 faces with a space to clear toxic text (0.1s gap like reference script)
+    for _, n in ipairs(faces) do
+        remote:FireServer(brick, faceEnums[n], rootPos, key, LIGHT_GRAY, "spray", " ")
+        task.wait(0.1)
     end
-    -- Extra unanchor-only pass on all faces to make sure anchor state is cleared
-    for _ = 1, 2 do
-        for _, n in ipairs(faces) do
-            pcall(function() remote:FireServer(brick, faceEnums[n], rootPos, key, LIGHT_GRAY, "unanchor", "") end)
-        end
-    end
-    -- Clear spray text on every face (empty string spray = removes toxic text)
-    for _ = 1, 3 do
-        for _, n in ipairs(faces) do
-            pcall(function() remote:FireServer(brick, faceEnums[n], rootPos, key, LIGHT_GRAY, "spray", "") end)
-        end
-    end
+
+    -- Step 3: Unanchor the brick
+    remote:FireServer(brick, Enum.NormalId.Top, rootPos, key, LIGHT_GRAY, "unanchor", "")
+    task.wait(0.1)
+    -- Fire unanchor one more time to be safe
+    remote:FireServer(brick, Enum.NormalId.Top, rootPos, key, LIGHT_GRAY, "plastic", "unanchor")
+
     print("[FIX] Done")
 end
 
@@ -2416,14 +2463,21 @@ local function bs_saveblock(bl)
     return bd
 end
 
--- ── buildblock: place a block via Build tool remotes ─────────
--- Track newly added bricks so we can paint them right after placing
-local bs_lastPlaced = nil
+-- ── buildblock — Extra Stuff pattern: ChildAdded + repeat...until ──
+-- This is the ONLY reliable way. bs_childcube gets set by ChildAdded
+-- when the server confirms the brick is placed.
+local bs_childcube  = nil
+local bs_built      = false
+
 pcall(function()
+    local function bs_onBrickAdded(child)
+        if child:IsA("BasePart") then
+            bs_childcube = child
+            bs_built     = true
+        end
+    end
     local function bs_watchFolder(folder)
-        folder.ChildAdded:Connect(function(child)
-            if child:IsA("BasePart") then bs_lastPlaced = child end
-        end)
+        folder.ChildAdded:Connect(bs_onBrickAdded)
     end
     if workspace.Bricks:FindFirstChild(LocalPlayer.Name) then
         bs_watchFolder(workspace.Bricks[LocalPlayer.Name])
@@ -2433,72 +2487,152 @@ pcall(function()
     end)
 end)
 
-local function bs_fireBuildTool(pos, modeOrSize)
-    local char = LocalPlayer.Character; if not char then return end
+local function bs_getBuildTool()
+    local char = LocalPlayer.Character
+    if not char then return nil end
     local tool = char:FindFirstChild("Build") or LocalPlayer.Backpack:FindFirstChild("Build")
-    if not tool then return end
-    if tool.Parent ~= char then tool.Parent = char; task.wait(0.05) end
-    tool = char:FindFirstChild("Build"); if not tool then return end
+    if not tool then return nil end
+    if tool.Parent ~= char then
+        tool.Parent = char
+        task.wait(0.05)
+    end
+    return char:FindFirstChild("Build")
+end
+
+local function bs_getPaintTool()
+    local char = LocalPlayer.Character
+    if not char then return nil end
+    local tool = char:FindFirstChild("Paint") or LocalPlayer.Backpack:FindFirstChild("Paint")
+    if not tool then return nil end
+    if tool.Parent ~= char then
+        tool.Parent = char
+        task.wait(0.05)
+    end
+    return char:FindFirstChild("Paint")
+end
+
+local function bs_fireBuild(tool, parent, face, pos, mode)
     local ev = tool:FindFirstChild("origevent")
     if ev then
-        pcall(function() ev:Invoke(workspace.Terrain, Enum.NormalId.Top, pos, modeOrSize or "detailed") end)
+        pcall(function() ev:Invoke(parent, face, pos, mode) end)
     else
         local sc = tool:FindFirstChild("Script")
         if sc then
             local r = sc:FindFirstChild("Event")
-            if r then pcall(function() r:FireServer(workspace.Terrain, Enum.NormalId.Top, pos, modeOrSize or "detailed") end) end
+            if r then pcall(function() r:FireServer(parent, face, pos, mode) end) end
+        end
+    end
+end
+
+local function bs_firePaint(tool, brick, face, pos, key, color, mat, extra)
+    local ev = tool:FindFirstChild("origevent")
+    if ev then
+        pcall(function() ev:Invoke(brick, face, pos, key, color, mat, extra) end)
+    else
+        local sc = tool:FindFirstChild("Script")
+        if sc then
+            local r = sc:FindFirstChild("Event")
+            if r then pcall(function() r:FireServer(brick, face, pos, key, color, mat, extra) end) end
         end
     end
 end
 
 local function bs_buildblock(pos, mat, color, bsize, bsizev3, origmat, sprays, anchored, collide)
-    local char = LocalPlayer.Character; if not char then return end
-    local hrp  = char:FindFirstChild("HumanoidRootPart"); if not hrp then return end
+    local char = LocalPlayer.Character
+    if not char then return end
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
 
-    bs_lastPlaced = nil  -- reset tracker
+    -- Reset placed tracker
+    bs_childcube = nil
+    bs_built     = false
 
-    -- Resize if needed
-    if bsizev3 then
-        local sizeStr = "resize "..bsizev3.X.." "..bsizev3.Y.." "..bsizev3.Z
-        bs_fireBuildTool(Vector3.new(99999,5000,99999), sizeStr)
+    -- Determine build mode
+    local bmode = "normal"
+    local pg = LocalPlayer.PlayerGui
+    if pg:FindFirstChild("Build") and pg.Build:FindFirstChild("Button") then
+        bmode = pg.Build.Button.Text
+    end
+    if bsizev3 then bmode = "detailed" end
+
+    -- Get build tool
+    local buildTool = bs_getBuildTool()
+    if not buildTool then
+        print("[AUTO BUILD] No Build tool found")
+        return
+    end
+
+    -- Fire resize if custom size
+    if bsizev3 and (bsizev3.X ~= bs_mult or bsizev3.Y ~= bs_mult or bsizev3.Z ~= bs_mult) then
+        bs_fireBuild(buildTool, workspace.Terrain, Enum.NormalId.Top,
+            Vector3.new(99999, 5000, 99999),
+            "resize "..bsizev3.X.." "..bsizev3.Y.." "..bsizev3.Z)
         task.wait(bs_resizewait)
+        -- Re-get tool after wait
+        buildTool = bs_getBuildTool()
+        if not buildTool then return end
     end
 
-    -- Place block
-    bs_fireBuildTool(pos, "detailed")
+    -- Fire build event + repeat until server confirms brick placed (ChildAdded sets bs_built)
+    local args = {workspace.Terrain, Enum.NormalId.Top, pos, bmode}
+    bs_fireBuild(buildTool, args[1], args[2], args[3], args[4])
 
-    -- Wait for placement confirmation
-    local placed = nil
-    local t0 = tick()
-    while tick()-t0 < 1.5 do
-        if bs_lastPlaced and bs_lastPlaced.Parent then placed = bs_lastPlaced; break end
-        task.wait(0.05)
-    end
-    -- fallback: find nearest brick to target pos
-    if not placed then
-        local myFolder = workspace.Bricks:FindFirstChild(LocalPlayer.Name)
-        if myFolder then
-            local bestDist = 8
-            for _, v in pairs(myFolder:GetChildren()) do
-                if v:IsA("BasePart") then
-                    local d = (v.Position - pos).Magnitude
-                    if d < bestDist then bestDist = d; placed = v end
-                end
-            end
+    local c = 0
+    repeat
+        c = c + 1
+        buildTool = bs_getBuildTool()
+        if buildTool then
+            bs_fireBuild(buildTool, args[1], args[2], args[3], args[4])
         end
+        task.wait(0.1)
+    until (bs_built and bs_childcube) or bs_stopped or bs_skipblock or c > 100
+
+    bs_built = false
+
+    if not bs_childcube or not bs_childcube.Parent then
+        print("[AUTO BUILD] Block not placed after "..c.." attempts")
+        return
     end
 
-    -- Paint the placed brick (color + material + anchor state)
-    if placed and placed.Parent then
-        local paintTool = char:FindFirstChild("Paint") or LocalPlayer.Backpack:FindFirstChild("Paint")
-        if paintTool then
-            if paintTool.Parent ~= char then paintTool.Parent = char; task.wait(0.05) end
-            local remote = paintTool:FindFirstChild("Event",true) or paintTool:FindFirstChildWhichIsA("RemoteEvent",true)
-            if remote then
-                local key = "both 🤝"
-                pcall(function() remote:FireServer(placed, Enum.NormalId.Top, hrp.Position, key,
-                    color or Color3.new(1,1,1), mat or "smooth", anchored and "anchor" or "unanchor") end)
+    local placed = bs_childcube
+    local paintPos = placed.Position + placed.Size/2
+
+    -- Paint: color + material
+    local paintTool = bs_getPaintTool()
+    if paintTool and (color or mat) then
+        local key = "both 🤝"
+        local matStr = mat or "smooth"
+        local colVal = color or Color3.new(1,1,1)
+        local ancStr = (anchored == false) and "unanchor" or "anchor"
+        -- Retry until color matches (Extra Stuff pattern)
+        local oldColor = placed.Color
+        local pc2 = 0
+        repeat
+            pc2 = pc2 + 1
+            paintTool = bs_getPaintTool()
+            if paintTool then
+                bs_firePaint(paintTool, placed, Enum.NormalId.Top, paintPos, key, colVal, matStr, ancStr)
             end
+            task.wait(0.2)
+        until not placed or not placed.Parent
+            or placed.Color == colVal
+            or (origmat and placed.Material == Enum.Material[origmat])
+            or bs_stopped or bs_skipblock or pc2 > 20
+
+        -- Set anchor state separately if needed
+        if placed and placed.Parent and placed.Anchored ~= (anchored ~= false) then
+            local ac = 0
+            repeat
+                ac = ac + 1
+                paintTool = bs_getPaintTool()
+                if paintTool then
+                    bs_firePaint(paintTool, placed, Enum.NormalId.Top, paintPos,
+                        "material", nil, ancStr, "")
+                end
+                task.wait(0.5)
+            until not placed or not placed.Parent
+                or placed.Anchored == (anchored ~= false)
+                or bs_stopped or bs_skipblock or ac > 10
         end
     end
 end
