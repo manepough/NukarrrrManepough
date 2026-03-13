@@ -2305,322 +2305,696 @@ end, CW, 42)
 -- ============================================================
 end -- close page 11
 
-do -- page 12: PAGE 12: AUTO BUILD
--- PAGE 12: AUTO BUILD  (Extra Stuff Updated by 2AREYOUMENTAL110)
+do -- page 12: PAGE 12: BUILD SAVE/LOAD
+-- PAGE 12: BUILD SAVE/LOAD (Extra Stuff bsaltab by 2AREYOUMENTAL110)
 -- ============================================================
 
-createLabel(pgAutoBuild, "  Auto Build", Color3.fromRGB(80,80,120), 13)
-createLabel(pgAutoBuild, "  by 2AREYOUMENTAL110 (Extra Stuff Updated)", Color3.fromRGB(11,95,226), 11)
+createLabel(pgAutoBuild, "  Build Save/Load", Color3.fromRGB(80,80,120), 13)
+createLabel(pgAutoBuild, "  Saves builds to TheChosenOneBuilds/ folder", Color3.fromRGB(11,95,226), 11)
+createLabel(pgAutoBuild, "  Note: toxify saved as neon | spray images unsupported | signs unsupported", Color3.fromRGB(160,100,0), 10)
 createDivider(pgAutoBuild)
 
--- equip tool helper
-local function es_equip(name)
-    local char = LocalPlayer.Character; if not char then return nil end
-    local t = char:FindFirstChild(name) or LocalPlayer.Backpack:FindFirstChild(name)
-    if not t then return nil end
-    if t.Parent ~= char then t.Parent = char; task.wait(0.05) end
-    return char:FindFirstChild(name)
-end
+-- ── Shared state ─────────────────────────────────────────────
+local http          = game:GetService("HttpService")
+local StarterGui    = game:GetService("StarterGui")
+local bs_stopped    = false
+local bs_skipblock  = false
+local bs_oldprt     = nil
+local bs_mult       = 4  -- default block size (studs)
+local bs_resizewait = 0.4
+local bs_historymax = 400
+local bs_cubehistory = {}
+local bs_historynum = 0
+local bs_offset     = Vector3.new(0,0,0)
+local bs_novel      = false
+local bs_wbs        = false  -- wait based on ping
+local bs_savebuildname  = "Untitled"
+local bs_savebuildnames = {}
+local bs_selectedbuild  = nil  -- {name, data}
+local bs_prttable   = nil
+local bs_plrbuild   = nil
+local bs_plrbuilds  = {ServerBuilds = workspace.Bricks}
+local bs_plrnames   = {"ServerBuilds"}
+local bs_hpb        = true
 
--- fire build event (origevent first, then Script.Event)
-local function es_build(tool, parent, side, pos, mode)
-    if not tool then return end
-    local ev = tool:FindFirstChild("origevent")
-    if ev then pcall(function() ev:Invoke(parent, side, pos, mode) end); return end
-    local sc = tool:FindFirstChild("Script")
-    if sc then local ev2 = sc:FindFirstChild("Event"); if ev2 then pcall(function() ev2:FireServer(parent, side, pos, mode) end) end end
-end
-
--- fire delete event
-local function es_delete(v)
-    local del = es_equip("Delete"); if not del then return end
-    local ev = del:FindFirstChild("origevent")
-    if ev then pcall(function() ev:Invoke(v, v.Position) end); return end
-    local sc = del:FindFirstChild("Script")
-    if sc then local ev2 = sc:FindFirstChild("Event"); if ev2 then pcall(function() ev2:FireServer(v, v.Position) end) end end
-end
-
--- get current build mode from playerGui
-local function es_mode()
-    local pg = LocalPlayer.PlayerGui
-    if pg:FindFirstChild("Build") and pg.Build:FindFirstChild("Button") then return pg.Build.Button.Text end
-    return "normal"
-end
-
--- --- SPAM BUILD ---------------------------------------------------------
-createLabel(pgAutoBuild, "  Spam Build", Color3.fromRGB(80,80,120), 12)
-
-local es_spmbl = false
-createToggle(pgAutoBuild, "  Spam Blocks at Your Position", function(v)
-    es_spmbl = v
-    if v then task.spawn(function()
-        while es_spmbl do
-            task.wait(0.1)
-            local char = LocalPlayer.Character
-            local hrp = char and char:FindFirstChild("HumanoidRootPart")
-            local tool = hrp and es_equip("Build")
-            if tool then
-                es_build(tool, workspace.Terrain, Enum.NormalId.Top, hrp.Position - Vector3.new(0,1.5,0), es_mode())
-            end
+-- ── File helpers (executor APIs) ─────────────────────────────
+local function bs_listfiles(dir)
+    local ok, lf = pcall(function() return listfiles(dir) end)
+    if ok and lf then
+        for i,v in pairs(lf) do
+            if string.sub(v,1,2) == "./" then lf[i] = string.sub(v,3) end
         end
-    end) end
-end, CW)
+        return lf
+    end
+    return {}
+end
 
-local es_spmsi = false
-createToggle(pgAutoBuild, "  Spam Signs at Your Position", function(v)
-    es_spmsi = v
-    if v then task.spawn(function()
-        while es_spmsi do
-            task.wait(0.1)
-            local char = LocalPlayer.Character
-            local hrp = char and char:FindFirstChild("HumanoidRootPart")
-            local tool = hrp and es_equip("Sign")
-            if tool then
-                es_build(tool, workspace.Terrain, Enum.NormalId.Top, hrp.Position - Vector3.new(0,1.5,0), "normal")
-            end
-        end
-    end) end
-end, CW)
+local function bs_getfn()
+    local fn = bs_listfiles("TheChosenOneBuilds/")
+    for i,v in pairs(fn) do
+        fn[i] = v:gsub("TheChosenOneBuilds/",""):gsub("%.json","")
+    end
+    return fn
+end
 
-createDivider(pgAutoBuild)
+local bs_bannedsymbols = {[":"]="_",['"']="'",["|"]="-",["?"]="",["*"]="",["<"]="(",[">"]=")"}
+local function bs_validate(name)
+    for i,v in pairs(bs_bannedsymbols) do name = name:gsub(i,v) end
+    name = name:gsub("%.","·")
+    return name
+end
 
--- --- TOXIFY AURA --------------------------------------------------------
-createLabel(pgAutoBuild, "  Toxify Aura", Color3.fromRGB(80,80,120), 12)
-createLabel(pgAutoBuild, "  Places toxic brick under nearby players (<40 studs)", Color3.fromRGB(11,95,226), 11)
-
-local es_toxbrick = nil
-local es_buildingtox = false
-local es_tkill = false
-
--- catch newly placed brick as toxic seed
+-- init folder
 pcall(function()
-    if workspace:FindFirstChild("Bricks") and workspace.Bricks:FindFirstChild(LocalPlayer.Name) then
-        workspace.Bricks[LocalPlayer.Name].ChildAdded:Connect(function(child)
-            if es_buildingtox then es_toxbrick = child end
-        end)
+    local files = bs_listfiles("")
+    if not table.find(files,"TheChosenOneBuilds/") and not table.find(files,"TheChosenOneBuilds") then
+        makefolder("TheChosenOneBuilds")
     end
 end)
+pcall(function()
+    local raw = readfile("thechosenonenames.txt")
+    bs_savebuildnames = http:JSONDecode(raw)
+end)
+if bs_savebuildnames == nil then bs_savebuildnames = {} end
 
-createToggle(pgAutoBuild, "  Toxify Aura", function(v)
-    es_tkill = v; es_buildingtox = false
-    if v then task.spawn(function()
-        while es_tkill do
-            task.wait()
-            local char = LocalPlayer.Character
-            local hrp = char and char:FindFirstChild("HumanoidRootPart")
-            if char and hrp then
-                if not es_toxbrick or not es_toxbrick:IsDescendantOf(workspace) then
-                    local pt = es_equip("Build") or es_equip("Paint")
-                    if pt then
-                        es_buildingtox = true
-                        local opos = hrp.CFrame
-                        local remote = pt:FindFirstChild("Event",true) or pt:FindFirstChildWhichIsA("RemoteEvent",true)
-                        if remote then
-                            local offPos = Vector3.new(math.random(10000,100000),math.random(1000,5000),math.random(10000,100000))
-                            local key = "both 🤝"
-                            pcall(function() remote:FireServer(ReplicatedStorage:FindFirstChild("Brick"), Enum.NormalId.Top, offPos, key, Color3.new(0,0,0), "toxic", "anchor") end)
-                        end
-                        task.wait(0.5); es_buildingtox = false
-                        hrp.CFrame = opos
-                    end
-                end
-                local bt = es_toxbrick and es_toxbrick:IsDescendantOf(workspace) and es_equip("Build")
-                if bt then
-                    for _, plr in pairs(Players:GetPlayers()) do
-                        if plr ~= LocalPlayer and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
-                            local phrp = plr.Character.HumanoidRootPart
-                            if (phrp.Position - hrp.Position).Magnitude < 40 then
-                                local pos = (phrp.CFrame * CFrame.new(0,0,-phrp.Velocity.Magnitude/2.5)).Position
-                                es_build(bt, es_toxbrick, Enum.NormalId.Top, pos, "detailed")
-                                task.wait(0.1)
-                            end
-                        end
-                    end
-                end
+-- ── Materials table ──────────────────────────────────────────
+local bs_materials = {}
+bs_materials[Enum.Material.SmoothPlastic] = "smooth"
+bs_materials[Enum.Material.Plastic]       = "plastic"
+bs_materials[Enum.Material.CeramicTiles]  = "tiles"
+bs_materials[Enum.Material.Brick]         = "bricks"
+bs_materials[Enum.Material.WoodPlanks]    = "planks"
+bs_materials[Enum.Material.Ice]           = "ice"
+bs_materials[Enum.Material.Grass]         = "grass"
+bs_materials[Enum.Material.Sand]          = "sand"
+bs_materials[Enum.Material.Snow]          = "snow"
+bs_materials[Enum.Material.Glass]         = "glass"
+bs_materials[Enum.Material.Wood]          = "wood"
+bs_materials[Enum.Material.Slate]         = "stone"
+bs_materials[Enum.Material.Pebble]        = "pebble"
+bs_materials[Enum.Material.Marble]        = "marble"
+bs_materials[Enum.Material.Granite]       = "granite"
+bs_materials[Enum.Material.DiamondPlate]  = "steel"
+bs_materials[Enum.Material.Metal]         = "metal"
+bs_materials[Enum.Material.Asphalt]       = "asphalt"
+bs_materials[Enum.Material.Concrete]      = "concrete"
+bs_materials[Enum.Material.Pavement]      = "pavement"
+bs_materials[Enum.Material.Neon]          = "neon"
+local bs_swapped = {}
+for i,v in pairs(bs_materials) do bs_swapped[v] = i end
+
+-- ── saveblock: serialise one BasePart ────────────────────────
+local function bs_saveblock(bl)
+    local bd = {}
+    if bl:IsA("BasePart") then
+        bd.p = {bl.Position.X, bl.Position.Y, bl.Position.Z}
+        bd.c = {math.round(bl.Color.R*255), math.round(bl.Color.G*255), math.round(bl.Color.B*255)}
+        bd.a = bl.Anchored
+        bd.cc = bl.CanCollide
+        if bl.Size.X ~= bs_mult or bl.Size.Y ~= bs_mult or bl.Size.Z ~= bs_mult then
+            bd.p[1] = (bd.p[1] - (bl.Size.X/2)) + 0.5
+            bd.p[2] = (bd.p[2] - (bl.Size.Y/2)) + 0.5
+            bd.p[3] = (bd.p[3] - (bl.Size.Z/2)) + 0.5
+            bd.s = {bl.Size.X, bl.Size.Y, bl.Size.Z}
+        end
+        bd.m = bs_materials[bl.Material]
+        bd.o = bl.Material.Name
+        bd.sp = {}
+        for _,v in pairs(bl:GetChildren()) do
+            if v.Name == "Spray" then
+                local lbl = v:FindFirstChild("Label")
+                local img = v:FindFirstChild("Image")
+                table.insert(bd.sp, {v.Face.Name, img and img.Image or "", lbl and lbl.Text or ""})
             end
         end
-    end) end
-end, CW)
+    end
+    return bd
+end
+
+-- ── buildblock: place a block via Build tool remotes ─────────
+local function bs_buildblock(pos, mat, color, bsize, bsizev3, origmat, sprays, anchored, collide)
+    local char = LocalPlayer.Character
+    if not char then return end
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+
+    local tool = char:FindFirstChild("Build") or LocalPlayer.Backpack:FindFirstChild("Build")
+    if not tool then return end
+    if tool.Parent ~= char then tool.Parent = char; task.wait(0.05) end
+    tool = char:FindFirstChild("Build")
+    if not tool then return end
+
+    local brick = ReplicatedStorage:FindFirstChild("Brick")
+    if not brick then return end
+
+    local pg = LocalPlayer.PlayerGui
+    local mode = "detailed"
+    if pg:FindFirstChild("Build") and pg.Build:FindFirstChild("Button") then
+        mode = pg.Build.Button.Text
+    end
+
+    -- size the brick
+    if bsizev3 then
+        local ok2 = false
+        local function trySize()
+            local ev = tool:FindFirstChild("origevent")
+            if ev then
+                pcall(function() ev:Invoke(brick, Enum.NormalId.Top, Vector3.new(99999,1000,99999), "resize "..bsizev3.X.." "..bsizev3.Y.." "..bsizev3.Z) end)
+            end
+            local sc = tool:FindFirstChild("Script")
+            if sc then
+                local r = sc:FindFirstChild("Event")
+                if r then pcall(function() r:FireServer(brick, Enum.NormalId.Top, Vector3.new(99999,1000,99999), "resize "..bsizev3.X.." "..bsizev3.Y.." "..bsizev3.Z) end) end
+            end
+        end
+        bs_novel = true
+        trySize()
+        task.wait(bs_resizewait)
+        bs_novel = false
+    end
+
+    -- place brick
+    local function firePlace()
+        local ev = tool:FindFirstChild("origevent")
+        if ev then
+            pcall(function() ev:Invoke(brick, Enum.NormalId.Top, pos, mode) end)
+            return
+        end
+        local sc = tool:FindFirstChild("Script")
+        if sc then
+            local r = sc:FindFirstChild("Event")
+            if r then pcall(function() r:FireServer(brick, Enum.NormalId.Top, pos, mode) end) end
+        end
+    end
+    firePlace()
+
+    -- wait for brick to appear in history
+    local placed = nil
+    if #bs_cubehistory > 0 then
+        local t0 = tick()
+        while tick()-t0 < 2 do
+            local latest = bs_cubehistory[bs_historynum]
+            if latest and latest.Parent then
+                placed = latest
+                break
+            end
+            task.wait(0.05)
+        end
+    end
+
+    if placed and placed.Parent then
+        -- apply material / color / anchored / collide
+        local paintTool = char:FindFirstChild("Paint") or LocalPlayer.Backpack:FindFirstChild("Paint")
+        if paintTool then
+            if paintTool.Parent ~= char then paintTool.Parent = char end
+            local remote = paintTool:FindFirstChild("Event",true) or paintTool:FindFirstChildWhichIsA("RemoteEvent",true)
+            if remote then
+                local key = "both 🤝"
+                pcall(function() remote:FireServer(placed, Enum.NormalId.Top, hrp.Position, key, color or Color3.new(1,1,1), mat or "smooth", anchored and "anchor" or "unanchor") end)
+            end
+        end
+    end
+end
+
+-- ── ghost-display helper ─────────────────────────────────────
+local function bs_createpartrepl(pos, bsize, col, mat, transp, anch, collide)
+    if typeof(pos) == "CFrame" then pos = pos.Position end
+    local p = Instance.new("Part")
+    bs_oldprt = p
+    p.Anchored = anch or true
+    p.CanCollide = collide or false
+    p.CastShadow = false
+    p.CanQuery = false
+    p.Color = col or Color3.new(1,1,1)
+    p.Transparency = transp or 0.5
+    p.Material = mat or Enum.Material.SmoothPlastic
+    if bsize then
+        pos = Vector3.new((pos.X+(bsize.X/2))-0.5, (pos.Y+(bsize.Y/2))-0.5, (pos.Z+(bsize.Z/2))-0.5)
+    end
+    p.Size = bsize or Vector3.new(bs_mult,bs_mult,bs_mult)
+    p.CFrame = CFrame.new(pos)
+    p.Parent = workspace
+    return p
+end
+
+-- ── Dropdown widget (scrollable list of saves) ───────────────
+-- We build a scrollable button list inside the page
+local bs_savedList    = {}   -- current list of save names on-screen
+local bs_savedListBtns = {}
+local bs_savedListFrame = Instance.new("Frame", pgAutoBuild)
+bs_savedListFrame.Size = UDim2.fromOffset(CW, 120)
+bs_savedListFrame.BackgroundColor3 = Color3.fromRGB(20,20,30)
+bs_savedListFrame.BorderSizePixel = 0
+Instance.new("UICorner", bs_savedListFrame).CornerRadius = UDim.new(0,6)
+local bs_savedScroll = Instance.new("ScrollingFrame", bs_savedListFrame)
+bs_savedScroll.Size = UDim2.fromScale(1,1)
+bs_savedScroll.BackgroundTransparency = 1
+bs_savedScroll.BorderSizePixel = 0
+bs_savedScroll.ScrollBarThickness = 3
+bs_savedScroll.ScrollBarImageColor3 = blueColor
+bs_savedScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+bs_savedScroll.CanvasSize = UDim2.new(0,0,0,0)
+local bs_savedLayout = Instance.new("UIListLayout", bs_savedScroll)
+bs_savedLayout.Padding = UDim.new(0,2)
+local bs_savedPad = Instance.new("UIPadding", bs_savedScroll)
+bs_savedPad.PaddingLeft = UDim.new(0,3); bs_savedPad.PaddingTop = UDim.new(0,3)
+
+local bs_selLabel = createLabel(pgAutoBuild, "  No save selected", Color3.fromRGB(116,113,117), 11)
+
+local function bs_refreshList()
+    for _,b in pairs(bs_savedListBtns) do b:Destroy() end
+    bs_savedListBtns = {}
+    bs_savedList = bs_getfn()
+    table.sort(bs_savedList, function(a,b) return a:lower() < b:lower() end)
+    for _, name in ipairs(bs_savedList) do
+        local btn = Instance.new("TextButton", bs_savedScroll)
+        btn.Size = UDim2.fromOffset(CW-16, 24)
+        btn.BackgroundColor3 = Color3.fromRGB(30,30,45)
+        btn.Text = name; btn.Font = Enum.Font.Gotham; btn.TextSize = 11
+        btn.TextColor3 = Color3.fromRGB(200,200,210); btn.BorderSizePixel = 0
+        btn.TextXAlignment = Enum.TextXAlignment.Left
+        btn.AutoButtonColor = false
+        Instance.new("UICorner",btn).CornerRadius = UDim.new(0,4)
+        local pad = Instance.new("UIPadding",btn); pad.PaddingLeft = UDim.new(0,6)
+        btn.MouseButton1Click:Connect(function()
+            -- deselect others
+            for _,b2 in pairs(bs_savedListBtns) do
+                b2.BackgroundColor3 = Color3.fromRGB(30,30,45)
+                b2.TextColor3 = Color3.fromRGB(200,200,210)
+            end
+            btn.BackgroundColor3 = blueColor
+            btn.TextColor3 = Color3.new(1,1,1)
+            local ok, data = pcall(function()
+                return http:JSONDecode(readfile("TheChosenOneBuilds/"..name..".json"))
+            end)
+            if ok and data then
+                bs_selectedbuild = {name, data}
+                bs_selLabel.Text = "  Selected: "..name.." ("..#data.." blocks)"
+                bs_selLabel.TextColor3 = blueColor
+            else
+                bs_selLabel.Text = "  Error reading: "..name
+                bs_selLabel.TextColor3 = Color3.fromRGB(220,60,0)
+            end
+        end)
+        table.insert(bs_savedListBtns, btn)
+    end
+end
+
+-- ── Player build dropdown ─────────────────────────────────────
+local bs_plrListBtns = {}
+local bs_plrListFrame = Instance.new("Frame", pgAutoBuild)
+bs_plrListFrame.Size = UDim2.fromOffset(CW, 80)
+bs_plrListFrame.BackgroundColor3 = Color3.fromRGB(20,20,30)
+bs_plrListFrame.BorderSizePixel = 0
+Instance.new("UICorner", bs_plrListFrame).CornerRadius = UDim.new(0,6)
+local bs_plrScroll = Instance.new("ScrollingFrame", bs_plrListFrame)
+bs_plrScroll.Size = UDim2.fromScale(1,1)
+bs_plrScroll.BackgroundTransparency = 1
+bs_plrScroll.BorderSizePixel = 0
+bs_plrScroll.ScrollBarThickness = 3
+bs_plrScroll.ScrollBarImageColor3 = blueColor
+bs_plrScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+bs_plrScroll.CanvasSize = UDim2.new(0,0,0,0)
+local bs_plrLayout = Instance.new("UIListLayout", bs_plrScroll)
+bs_plrLayout.Padding = UDim.new(0,2)
+local bs_plrPad = Instance.new("UIPadding", bs_plrScroll)
+bs_plrPad.PaddingLeft = UDim.new(0,3); bs_plrPad.PaddingTop = UDim.new(0,3)
+
+local bs_buildhighlight = Instance.new("Highlight")
+bs_buildhighlight.Parent = game:GetService("CoreGui")
+bs_buildhighlight.FillColor = Color3.fromRGB(0,255,0)
+bs_buildhighlight.FillTransparency = 0.9
+
+local function bs_refreshPlrList()
+    for _,b in pairs(bs_plrListBtns) do b:Destroy() end
+    bs_plrListBtns = {}
+    table.sort(bs_plrnames, function(a,b) return a:lower() < b:lower() end)
+    for _, name in ipairs(bs_plrnames) do
+        local btn = Instance.new("TextButton", bs_plrScroll)
+        btn.Size = UDim2.fromOffset(CW-16, 22)
+        btn.BackgroundColor3 = Color3.fromRGB(30,30,45)
+        btn.Text = name; btn.Font = Enum.Font.Gotham; btn.TextSize = 10
+        btn.TextColor3 = Color3.fromRGB(200,200,210); btn.BorderSizePixel = 0
+        btn.TextXAlignment = Enum.TextXAlignment.Left; btn.AutoButtonColor = false
+        Instance.new("UICorner",btn).CornerRadius = UDim.new(0,4)
+        local pad2 = Instance.new("UIPadding",btn); pad2.PaddingLeft = UDim.new(0,6)
+        btn.MouseButton1Click:Connect(function()
+            for _,b2 in pairs(bs_plrListBtns) do
+                b2.BackgroundColor3 = Color3.fromRGB(30,30,45)
+                b2.TextColor3 = Color3.fromRGB(200,200,210)
+            end
+            btn.BackgroundColor3 = blueColor; btn.TextColor3 = Color3.new(1,1,1)
+            bs_plrbuild = bs_plrbuilds[name]
+            if bs_hpb then bs_buildhighlight.Adornee = bs_plrbuild end
+        end)
+        table.insert(bs_plrListBtns, btn)
+    end
+end
+
+-- populate player builds from workspace.Bricks
+local function bs_dobricks(f, silent)
+    bs_plrbuilds[f.Name] = f
+    if f:FindFirstChild("Brick") then
+        if not table.find(bs_plrnames, f.Name) then
+            table.insert(bs_plrnames, f.Name)
+        end
+    end
+    f.ChildAdded:Connect(function()
+        if not table.find(bs_plrnames, f.Name) then
+            table.insert(bs_plrnames, f.Name)
+            bs_refreshPlrList()
+        end
+    end)
+    f.ChildRemoved:Connect(function()
+        if #f:GetChildren() <= 0 then
+            local idx = table.find(bs_plrnames, f.Name)
+            if idx then table.remove(bs_plrnames, idx) end
+            bs_refreshPlrList()
+        end
+    end)
+    if not silent then bs_refreshPlrList() end
+end
+
+pcall(function()
+    for _,v in pairs(workspace.Bricks:GetChildren()) do
+        if v:IsA("Model") then bs_dobricks(v, true) end
+    end
+    bs_refreshPlrList()
+    workspace.Bricks.ChildAdded:Connect(function(child) bs_dobricks(child) end)
+end)
+
+-- ────────────────────────────────────────────────────────────
+-- UI
+-- ────────────────────────────────────────────────────────────
+
+-- STOP / SKIP
+createLabel(pgAutoBuild, "  Build Control", Color3.fromRGB(80,80,120), 12)
+createButton(pgAutoBuild, "  Stop Building", function() bs_stopped = true end, CW, 32)
+createButton(pgAutoBuild, "  Skip Block",    function() bs_skipblock = true end, CW, 32)
+createDivider(pgAutoBuild)
+
+-- BUILD NAME
+createLabel(pgAutoBuild, "  Set Save Name", Color3.fromRGB(80,80,120), 12)
+local bs_nameBox = createTextBox(pgAutoBuild, "Untitled", CW, 30)
+bs_nameBox.ClearTextOnFocus = false
+bs_nameBox.FocusLost:Connect(function()
+    local txt = bs_validate(bs_nameBox.Text)
+    if txt ~= "" then
+        bs_savebuildname = txt
+        bs_nameBox.PlaceholderText = "Name set: "..txt
+        bs_nameBox.Text = ""
+    end
+end)
+createDivider(pgAutoBuild)
+
+-- SAVING
+createLabel(pgAutoBuild, "  Save Builds", Color3.fromRGB(80,80,120), 12)
+
+createButton(pgAutoBuild, "  Save My Build", function()
+    local bricks = workspace.Bricks
+    local myFolder = bricks:FindFirstChild(LocalPlayer.Name)
+    if not myFolder then print("[BSAL] No build folder found"); return end
+    local builddata = {}
+    for _,v in pairs(myFolder:GetChildren()) do
+        if v:IsA("BasePart") then table.insert(builddata, bs_saveblock(v)) end
+    end
+    local name = bs_savebuildname
+    if name == "Untitled" or table.find(bs_getfn(), name) then
+        bs_savebuildnames[name] = (bs_savebuildnames[name] or 0) + 1
+        name = name..tostring(bs_savebuildnames[name])
+    end
+    pcall(function() writefile("TheChosenOneBuilds/"..name..".json", http:JSONEncode(builddata)) end)
+    pcall(function() writefile("thechosenonenames.txt", http:JSONEncode(bs_savebuildnames)) end)
+    bs_refreshList()
+    print("[BSAL] Saved '"..name.."' ("..#builddata.." blocks)")
+end, CW, 36)
+
+createButton(pgAutoBuild, "  Save Server Builds (ALL)", function()
+    local builddata = {}
+    for _,v in pairs(workspace.Bricks:GetDescendants()) do
+        if v:IsA("BasePart") then table.insert(builddata, bs_saveblock(v)) end
+    end
+    local name = bs_savebuildname
+    if name == "Untitled" or table.find(bs_getfn(), name) then
+        bs_savebuildnames[name] = (bs_savebuildnames[name] or 0) + 1
+        name = name..tostring(bs_savebuildnames[name])
+    end
+    pcall(function() writefile("TheChosenOneBuilds/"..name..".json", http:JSONEncode(builddata)) end)
+    pcall(function() writefile("thechosenonenames.txt", http:JSONEncode(bs_savebuildnames)) end)
+    bs_refreshList()
+    print("[BSAL] Saved server builds '"..name.."' ("..#builddata.." blocks)")
+end, CW, 36)
 
 createDivider(pgAutoBuild)
 
--- --- DELETE AURA --------------------------------------------------------
-createLabel(pgAutoBuild, "  Delete Aura", Color3.fromRGB(80,80,120), 12)
-createLabel(pgAutoBuild, "  WARNING: also deletes your own builds", Color3.fromRGB(200,100,0), 11)
+-- PLAYER BUILD PICKER
+createLabel(pgAutoBuild, "  Select Player Build (pick then save)", Color3.fromRGB(80,80,120), 12)
+-- (bs_plrListFrame already parented to pgAutoBuild above)
 
-local es_daurarange = 35
-createLabel(pgAutoBuild, "  Range in studs (default 35)", Color3.fromRGB(80,80,120), 11)
-local es_rangeBox = createTextBox(pgAutoBuild, "35", CW, 30)
-es_rangeBox.ClearTextOnFocus = false
-es_rangeBox:GetPropertyChangedSignal("Text"):Connect(function()
-    local n = tonumber(es_rangeBox.Text); if n and n > 0 then es_daurarange = n end
+createToggle(pgAutoBuild, "  Highlight Selected Player Build", function(v)
+    bs_hpb = v
+    if v and bs_plrbuild then
+        bs_buildhighlight.Adornee = bs_plrbuild
+        bs_buildhighlight.FillTransparency = 0.9
+        bs_buildhighlight.OutlineTransparency = 0
+    else
+        bs_buildhighlight.FillTransparency = 1
+        bs_buildhighlight.OutlineTransparency = 1
+    end
+end, CW)
+
+createButton(pgAutoBuild, "  Save Player Build", function()
+    if not bs_plrbuild then print("[BSAL] No player selected"); return end
+    local builddata = {}
+    for _,v in pairs(bs_plrbuild:GetChildren()) do
+        if v:IsA("BasePart") then table.insert(builddata, bs_saveblock(v)) end
+    end
+    local name = bs_savebuildname
+    if name == "Untitled" or table.find(bs_getfn(), name) then
+        bs_savebuildnames[name] = (bs_savebuildnames[name] or 0) + 1
+        name = name..tostring(bs_savebuildnames[name])
+    end
+    pcall(function() writefile("TheChosenOneBuilds/"..name..".json", http:JSONEncode(builddata)) end)
+    pcall(function() writefile("thechosenonenames.txt", http:JSONEncode(bs_savebuildnames)) end)
+    bs_refreshList()
+    print("[BSAL] Saved player build '"..name.."' ("..#builddata.." blocks)")
+end, CW, 36)
+
+createDivider(pgAutoBuild)
+
+-- SAVED BUILDS LIST (dropdown substitute)
+createLabel(pgAutoBuild, "  Saved Builds (click to select)", Color3.fromRGB(80,80,120), 12)
+createButton(pgAutoBuild, "  Refresh List", function() bs_refreshList() end, CW, 30)
+-- (bs_savedListFrame already parented to pgAutoBuild)
+-- (bs_selLabel already parented to pgAutoBuild)
+
+-- DELETE
+createButton(pgAutoBuild, "  Delete Selected Save", function()
+    if not bs_selectedbuild then print("[BSAL] Nothing selected"); return end
+    pcall(function() delfile("TheChosenOneBuilds/"..bs_selectedbuild[1]..".json") end)
+    print("[BSAL] Deleted "..bs_selectedbuild[1])
+    bs_selectedbuild = nil
+    bs_selLabel.Text = "  No save selected"
+    bs_selLabel.TextColor3 = Color3.fromRGB(116,113,117)
+    bs_refreshList()
+end, CW, 32)
+
+-- LOAD SAVE
+createButton(pgAutoBuild, "  Load Selected Save", function()
+    if not bs_selectedbuild then print("[BSAL] Nothing selected"); return end
+    local build = bs_selectedbuild[2]
+    if not build then return end
+    bs_stopped = false
+    if bs_oldprt then pcall(function() bs_oldprt:Destroy() end) end
+    task.spawn(function()
+        for _,v in pairs(build) do
+            if bs_stopped then break end
+            while bs_skipblock do bs_skipblock = false; break end
+            local posses = v.p or v.pos
+            if posses then
+                local pos  = CFrame.new(posses[1],posses[2],posses[3]).Position + bs_offset
+                local bsz  = (v.s or v.size) and Vector3.new(table.unpack(v.s or v.size)) or nil
+                local col  = Color3.fromRGB(table.unpack(v.c or v.color or {255,255,255}))
+                local mat  = v.m or v.mat
+                local orig = v.o or v.origmat
+                local anch = v.a
+                local coll = v.cc
+                bs_createpartrepl(pos, bsz, col, bs_swapped[mat], 0.5, anch, coll)
+                bs_buildblock(pos, mat, col, nil, bsz, orig, v.sp or v.sprayed, anch, coll)
+            end
+        end
+        bs_stopped = false
+        print("[BSAL] Load complete!")
+    end)
+end, CW, 36)
+
+createDivider(pgAutoBuild)
+
+-- DISPLAY / PREVIEW
+createLabel(pgAutoBuild, "  Display Build (only you see)", Color3.fromRGB(80,80,120), 12)
+createButton(pgAutoBuild, "  Display Whole Build (may lag)", function()
+    if not bs_selectedbuild then print("[BSAL] Nothing selected"); return end
+    if bs_prttable then
+        for _,v in pairs(bs_prttable) do pcall(function() v:Destroy() end) end
+    end
+    local t = {}
+    for _,v in pairs(bs_selectedbuild[2]) do
+        local posses = v.pos or v.p
+        if posses then
+        local pos  = CFrame.new(posses[1],posses[2],posses[3]).Position + bs_offset
+        local bsz  = (v.size or v.s) and Vector3.new(table.unpack(v.size or v.s)) or nil
+        local col  = Color3.fromRGB(table.unpack(v.color or v.c or {200,200,200}))
+        local prt  = bs_createpartrepl(pos, bsz, col, bs_swapped[v.mat or v.m], 0, v.a or v.anchored, v.cc or v.collide)
+        table.insert(t, prt)
+        end -- if posses
+    end
+    bs_prttable = t
+    print("[BSAL] Displayed "..#t.." blocks")
+end, CW, 36)
+
+createButton(pgAutoBuild, "  Delete Build Display", function()
+    if bs_prttable then
+        for _,v in pairs(bs_prttable) do pcall(function() v:Destroy() end) end
+        bs_prttable = nil
+    end
+end, CW, 32)
+
+createDivider(pgAutoBuild)
+
+-- OFFSET
+createLabel(pgAutoBuild, "  Build Offset", Color3.fromRGB(80,80,120), 12)
+createLabel(pgAutoBuild, "  Sets offset to your current position when loading", Color3.fromRGB(11,95,226), 10)
+
+local bs_offsetpart = Instance.new("Part")
+bs_offsetpart.Shape = Enum.PartType.Ball; bs_offsetpart.Anchored = true
+bs_offsetpart.CanCollide = false; bs_offsetpart.CastShadow = false
+bs_offsetpart.CanQuery = false; bs_offsetpart.Color = Color3.new(0,1,0)
+bs_offsetpart.Transparency = 1; bs_offsetpart.Size = Vector3.new(3,3,3)
+bs_offsetpart.Parent = workspace
+
+createButton(pgAutoBuild, "  Set Offset (your position)", function()
+    local char = LocalPlayer.Character
+    local hrp  = char and char:FindFirstChild("HumanoidRootPart")
+    if hrp then
+        bs_offset = hrp.Position
+        bs_offsetpart.Position = bs_offset; bs_offsetpart.Transparency = 0.5
+        print("[BSAL] Offset set to "..tostring(bs_offset))
+    end
+end, CW, 32)
+
+createButton(pgAutoBuild, "  Reset Offset", function()
+    bs_offset = Vector3.new(0,0,0)
+    bs_offsetpart.Transparency = 1
+    print("[BSAL] Offset reset")
+end, CW, 32)
+
+createDivider(pgAutoBuild)
+
+-- OPTIMIZE
+createLabel(pgAutoBuild, "  Optimize Saves (legacy format fix)", Color3.fromRGB(80,80,120), 12)
+
+local function bs_optimizeOne()
+    if not bs_selectedbuild then return end
+    local build = bs_selectedbuild[2]
+    for _,v in pairs(build) do
+        if v.pos then v.p = v.pos; v.pos = nil end
+        if v.mat then v.m = v.mat; v.mat = nil end
+        if v.size then v.s = v.size; v.size = nil end
+        if v.color then v.c = v.color; v.color = nil end
+        if v.origmat then v.o = v.origmat; v.origmat = nil end
+        if v.sprayed then v.sp = v.sprayed; v.sprayed = nil end
+        if v.anchored ~= nil then v.a = v.anchored; v.anchored = nil end
+        if v.collide ~= nil then v.cc = v.collide; v.collide = nil end
+    end
+    pcall(function() writefile("TheChosenOneBuilds/"..bs_selectedbuild[1]..".json", http:JSONEncode(build)) end)
+    print("[BSAL] Optimized "..bs_selectedbuild[1])
+end
+
+createButton(pgAutoBuild, "  Optimize Selected Save", bs_optimizeOne, CW, 32)
+
+createButton(pgAutoBuild, "  Optimize ALL Saves (recommended)", function()
+    local orig = bs_selectedbuild
+    local files = bs_listfiles("TheChosenOneBuilds/")
+    for _,f in pairs(files) do
+        local name = f:gsub("TheChosenOneBuilds/",""):gsub("%.json","")
+        local ok, data = pcall(function() return http:JSONDecode(readfile(f)) end)
+        if ok and data then
+            bs_selectedbuild = {name, data}
+            local ok2, err = pcall(bs_optimizeOne)
+            if not ok2 then print("[BSAL] Already optimized: "..name.." | "..tostring(err)) end
+        end
+    end
+    bs_selectedbuild = orig
+    bs_refreshList()
+    print("[BSAL] Done optimizing all saves")
+end, CW, 36)
+
+createDivider(pgAutoBuild)
+
+-- PERFORMANCE SETTINGS
+createLabel(pgAutoBuild, "  Performance Settings", Color3.fromRGB(80,80,120), 12)
+createLabel(pgAutoBuild, "  Higher brick history = smoother, but may lag (default 400)", Color3.fromRGB(11,95,226), 10)
+
+local bs_histBox = createTextBox(pgAutoBuild, "Brick History (400)", CW, 30)
+bs_histBox.ClearTextOnFocus = false
+bs_histBox.FocusLost:Connect(function()
+    local n = tonumber(bs_histBox.Text)
+    if n then
+        bs_historymax = math.abs(n)
+        for i,_ in pairs(bs_cubehistory) do
+            if i > bs_historymax then bs_cubehistory[i] = nil end
+        end
+        print("[BSAL] Brick history set to "..bs_historymax)
+    end
+    bs_histBox.Text = ""
 end)
 
-local es_daura = false
-local es_dauras = false
+createLabel(pgAutoBuild, "  Lower resize wait = faster but may miss resizes (default 0.4)", Color3.fromRGB(11,95,226), 10)
+local bs_rwLabel = createLabel(pgAutoBuild, "  Resize Wait: 0.4s", Color3.fromRGB(116,113,117), 11)
 
--- sphere part for GetPartsInPart detection (standard mode)
-local es_dauraDetect = Instance.new("Part")
-es_dauraDetect.Shape = Enum.PartType.Ball
-es_dauraDetect.Anchored = true; es_dauraDetect.CanCollide = false
-es_dauraDetect.CastShadow = false; es_dauraDetect.CanQuery = false
-es_dauraDetect.Transparency = 1
-es_dauraDetect.Size = Vector3.new(es_daurarange,es_daurarange,es_daurarange)
-es_dauraDetect.Parent = workspace
+local bs_rwBox = createTextBox(pgAutoBuild, "Resize Wait (0.4)", CW, 30)
+bs_rwBox.ClearTextOnFocus = false
+bs_rwBox.FocusLost:Connect(function()
+    local n = tonumber(bs_rwBox.Text)
+    if n then
+        bs_resizewait = n
+        bs_rwLabel.Text = "  Resize Wait: "..tostring(n).."s"
+    end
+    bs_rwBox.Text = ""
+end)
 
-local es_filter = OverlapParams.new()
-es_filter.FilterType = Enum.RaycastFilterType.Include
-es_filter.MaxParts = 50
-pcall(function() if workspace:FindFirstChild("Bricks") then es_filter:AddToFilter(workspace.Bricks) end end)
-
-createToggle(pgAutoBuild, "  Delete Aura (Standard)", function(v)
-    es_daura = v
-    es_dauraDetect.Transparency = v and 0.85 or 1
+createToggle(pgAutoBuild, "  Auto Resize Wait (based on ping)", function(v)
+    bs_wbs = v
 end, CW)
 
-createToggle(pgAutoBuild, "  Delete Aura (Solara)", function(v)
-    es_dauras = v
-    es_dauraDetect.Transparency = v and 0.85 or 1
-end, CW)
+local bs_pingLabel = createLabel(pgAutoBuild, "  Ping: ???", Color3.fromRGB(116,113,117), 11)
 
--- combined aura loop
+-- ping monitor + auto resize wait loop
 coroutine.wrap(function()
     while true do
-        task.wait()
+        task.wait(1)
         pcall(function()
-            local char = LocalPlayer.Character; if not char then return end
-            local hrp = char:FindFirstChild("HumanoidRootPart"); if not hrp then return end
-            es_dauraDetect.Position = hrp.Position
-            es_dauraDetect.Size = Vector3.new(es_daurarange,es_daurarange,es_daurarange)
-            if es_daura then
-                local parts = workspace:GetPartsInPart(es_dauraDetect, es_filter)
-                for _, v in pairs(parts) do
-                    coroutine.wrap(function() pcall(function() es_delete(v) end) end)()
+            local ping = -1
+            for _,v in pairs(game:GetService("CoreGui").RobloxGui.PerformanceStats:GetChildren()) do
+                local txt = v:FindFirstChildWhichIsA("TextLabel",true)
+                if txt and txt.Text:find("ms") and txt.Text:find("%d") then
+                    ping = tonumber(txt.Text:match("%d+")) or ping
                 end
             end
-            if es_dauras then
-                local bricks = workspace:FindFirstChild("Bricks")
-                if bricks then
-                    for _, v in pairs(bricks:GetDescendants()) do
-                        if v:IsA("BasePart") and (v.Position - hrp.Position).Magnitude < es_daurarange then
-                            coroutine.wrap(function() pcall(function() es_delete(v) end) end)()
-                        end
-                    end
+            if ping >= 0 then
+                bs_pingLabel.Text = "  Ping: "..tostring(ping).."ms"
+                if bs_wbs then
+                    bs_resizewait = math.max(0.1, ping/1000 * 1.5)
+                    bs_rwLabel.Text = "  Resize Wait: "..string.format("%.2f", bs_resizewait).."s"
                 end
             end
         end)
     end
 end)()
 
-createDivider(pgAutoBuild)
-
--- --- SELECT BLOCK + SPAM SIDE -------------------------------------------
-createLabel(pgAutoBuild, "  Select Block & Spam Side", Color3.fromRGB(80,80,120), 12)
-createLabel(pgAutoBuild, "  Tip: Use detailed mode to spawn blocks at your feet", Color3.fromRGB(11,95,226), 11)
-
-local es_sblock = nil
-local es_side   = Enum.NormalId.Top
-local es_spmsb  = false
-
-local es_sbox = Instance.new("SelectionBox")
-es_sbox.Color3 = Color3.fromRGB(0,170,255)
-es_sbox.LineThickness = -1
-es_sbox.SurfaceColor3 = Color3.fromRGB(13,105,172)
-es_sbox.SurfaceTransparency = 1
-es_sbox.Transparency = 0
-es_sbox.Parent = game:GetService("CoreGui")
-
-local es_ssbox = Instance.new("SurfaceGui")
-es_ssbox.Parent = game:GetService("CoreGui")
-es_ssbox.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
-local es_ssframe = Instance.new("Frame", es_ssbox)
-es_ssframe.BackgroundTransparency = 1
-es_ssframe.Size = UDim2.new(1,0,1,0)
-local es_uistroke = Instance.new("UIStroke", es_ssframe)
-es_uistroke.LineJoinMode = Enum.LineJoinMode.Miter
-es_uistroke.Color = Color3.fromRGB(13,105,172)
-es_uistroke.Thickness = -1
-
-local es_blockLbl = createLabel(pgAutoBuild, "  No Block Selected", Color3.fromRGB(116,113,117), 11)
-
-local es_selectConn = nil
-createToggle(pgAutoBuild, "  Select Block (click to pick)", function(v)
-    es_uistroke.Thickness = v and 15 or -1
-    if v then
-        es_selectConn = UserInputService.InputBegan:Connect(function(input, gpe)
-            if gpe or input.UserInputType ~= Enum.UserInputType.MouseButton1 then return end
-            local ray = workspace.CurrentCamera:ScreenPointToRay(input.Position.X, input.Position.Y)
-            local rp = RaycastParams.new(); rp.FilterType = Enum.RaycastFilterType.Exclude
-            local excl = {}
-            for _, p in ipairs(Players:GetPlayers()) do if p.Character then table.insert(excl,p.Character) end end
-            rp.FilterDescendantsInstances = excl
-            local res = workspace:Raycast(ray.Origin, ray.Direction*500, rp)
-            if res and res.Instance and res.Instance:IsA("BasePart") then
-                es_sblock = res.Instance
-                es_sbox.Adornee = es_sblock
-                es_ssbox.Adornee = es_sblock; es_ssbox.Face = es_side
-                es_blockLbl.Text = "  Selected: "..es_sblock.Name
-                es_blockLbl.TextColor3 = Color3.fromRGB(11,95,226)
-            end
-        end)
-    else
-        if es_selectConn then es_selectConn:Disconnect(); es_selectConn = nil end
-    end
-end, CW)
-
-createToggle(pgAutoBuild, "  Outline Selected Block", function(v)
-    es_sbox.LineThickness = v and 0.05 or -1
-end, CW)
-
--- Side selector row
-createLabel(pgAutoBuild, "  Side:", Color3.fromRGB(80,80,120), 11)
-local sideRowFrame = Instance.new("Frame", pgAutoBuild)
-sideRowFrame.Size = UDim2.fromOffset(CW, 30)
-sideRowFrame.BackgroundTransparency = 1; sideRowFrame.BorderSizePixel = 0
-local sideRowLayout = Instance.new("UIListLayout", sideRowFrame)
-sideRowLayout.FillDirection = Enum.FillDirection.Horizontal; sideRowLayout.Padding = UDim.new(0,3)
-local es_sideBtns = {}
-for _, sn in ipairs({"Right","Top","Back","Left","Bottom","Front"}) do
-    local sb = Instance.new("TextButton", sideRowFrame)
-    sb.Size = UDim2.fromOffset(50,26); sb.BackgroundColor3 = Color3.fromRGB(38,38,58)
-    sb.Text = sn; sb.Font = Enum.Font.GothamBold; sb.TextSize = 9
-    sb.TextColor3 = Color3.fromRGB(160,160,180); sb.BorderSizePixel = 0; sb.AutoButtonColor = false
-    Instance.new("UICorner",sb).CornerRadius = UDim.new(0,5)
-    sb.MouseButton1Click:Connect(function()
-        es_side = Enum.NormalId[sn]
-        for _, b in ipairs(es_sideBtns) do b.BackgroundColor3=Color3.fromRGB(38,38,58); b.TextColor3=Color3.fromRGB(160,160,180) end
-        sb.BackgroundColor3=blueColor; sb.TextColor3=Color3.new(1,1,1)
-        if es_sblock then es_ssbox.Adornee=es_sblock; es_ssbox.Face=es_side end
-    end)
-    table.insert(es_sideBtns, sb)
-end
--- Default Top selected
-if es_sideBtns[2] then es_sideBtns[2].BackgroundColor3=blueColor; es_sideBtns[2].TextColor3=Color3.new(1,1,1) end
-
--- Select side by clicking (exact Extra Stuff ss toggle -- enabled by default)
-local es_ss = true
-createToggle(pgAutoBuild, "  Select Side by Clicking Block Face", function(v)
-    es_ss = v
-end, CW)
-
-createToggle(pgAutoBuild, "  Spam Selected Block Side", function(v)
-    es_spmsb = v
-    if v then task.spawn(function()
-        while es_spmsb do
-            task.wait(0.05)
-            local char = LocalPlayer.Character
-            local hrp = char and char:FindFirstChild("HumanoidRootPart")
-            local block = es_sblock and es_sblock.Parent and es_sblock
-            local tool = (hrp and block) and es_equip("Build")
-            if tool then
-                local ok, err = pcall(function()
-                    es_build(tool, block, es_side, hrp.Position - Vector3.new(0,1.5,0), es_mode())
-                end)
-                if not ok then print("[AUTO BUILD] "..tostring(err)) end
-            end
-        end
-    end) end
-end, CW)
+-- initial list load
+bs_refreshList()
+bs_refreshPlrList()
 
 end -- close page 12
 
