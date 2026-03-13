@@ -1,5 +1,5 @@
 --[[
-  manesNUKER — CodeX UI
+  manesNUKER -- CodeX UI
   credit: stik claude gemini
 ]]
 
@@ -492,7 +492,7 @@ end
 addArrowHover(leftArrow)
 addArrowHover(rightArrow)
 
--- Page scroll containers — positioned in CodeX content area (x=20, y=68)
+-- Page scroll containers -- positioned in CodeX content area (x=20, y=68)
 local pageContainers = {}
 for i = 1, #pages do
     local sf = Instance.new("ScrollingFrame", frame)
@@ -703,7 +703,7 @@ end
 local function getBrick() return ReplicatedStorage:FindFirstChild("Brick") end
 
 -- ============================================================
--- BYPASS TEXT — inserts <font size='0'></font> between every letter
+-- BYPASS TEXT -- inserts <font size='0'></font> between every letter
 -- so chat filters / admin logs can't read the words
 -- ============================================================
 local BP          = "<font size='0'></font>"
@@ -733,10 +733,10 @@ local function buildBypass(str, minChunk, maxChunk)
 end
 
 -- Smart bypass:
--- 1. If Roblox doesn't filter the text at all → return as-is (no tags)
--- 2. Try large chunks first (fewer tags, less visible) → up to small chunks
+-- 1. If Roblox doesn't filter the text at all -> return as-is (no tags)
+-- 2. Try large chunks first (fewer tags, less visible) -> up to small chunks
 -- 3. Retry each density multiple times (randomized placement)
--- 4. If still tagged after all attempts → every single char gets a tag
+-- 4. If still tagged after all attempts -> every single char gets a tag
 local function bypassText(str)
     if not str or str == "" then return "" end
 
@@ -744,9 +744,9 @@ local function bypassText(str)
     if not isFiltered(str) then return str end
 
     -- Density levels: {minChunk, maxChunk, attempts}
-    -- Start with big chunks (few tags) → go smaller if still filtered
+    -- Start with big chunks (few tags) -> go smaller if still filtered
     local levels = {
-        {4, 6, 4},   -- ~1 tag per 4-6 chars — barely visible
+        {4, 6, 4},   -- ~1 tag per 4-6 chars -- barely visible
         {3, 5, 4},   -- ~1 tag per 3-5 chars
         {2, 4, 5},   -- ~1 tag per 2-4 chars
         {1, 3, 6},   -- ~1 tag per 1-3 chars
@@ -796,16 +796,16 @@ local function getNearestPlacedBrick()
 end
 
 -- ============================================================
--- NUKE — with retry until brick confirms TOXIC + ANCHORED
+-- NUKE -- with retry until brick confirms TOXIC + ANCHORED
 -- ============================================================
 local function runNuke()
     local remote, rootPos = getPaintRemote(); local brick = getBrick()
     if not remote or not brick then print("[NUKE] missing tools"); return end
 
-    local key = "both \u{1F91D}"
+    local key = "both 🤝"
     local blk = Color3.new(0, 0, 0)
 
-    -- Default toxic texts — every letter auto-bypassed
+    -- Default toxic texts -- every letter auto-bypassed
     local tp = {
         Front  = bypassText("Fuck Admin"),
         Back   = bypassText("say i eat pussy"),
@@ -832,7 +832,7 @@ local function runNuke()
                 print("[NUKE] Anchor confirmed on attempt "..attempt)
                 break
             else
-                print("[NUKE] Not anchored yet — retry "..attempt.."/"..maxRetries)
+                print("[NUKE] Not anchored yet -- retry "..attempt.."/"..maxRetries)
                 task.wait(0.2)
             end
         else
@@ -841,7 +841,7 @@ local function runNuke()
         end
     end
 
-    -- STEP 2: Paint faces — auto-bypass via TextService retry
+    -- STEP 2: Paint faces -- auto-bypass via TextService retry
     for _, n in ipairs(faces) do
         local rawTxt = faceData[n] and faceData[n].txt.Text ~= "" and faceData[n].txt.Text or (tp[n] or "GGS")
         -- Smart bypass: checks with Roblox TextService, retries until not filtered
@@ -853,11 +853,11 @@ local function runNuke()
             if attempt < 3 then task.wait(0.05) end
         end
     end
-    print("[NUKE] Done — TOXIC + ANCHORED")
+    print("[NUKE] Done -- TOXIC + ANCHORED")
 end
 
 -- ============================================================
--- FIX — with retry until brick confirms UNANCHORED
+-- FIX -- with retry until brick confirms UNANCHORED
 -- ============================================================
 local function runFix()
     -- Clear face data UI
@@ -870,7 +870,7 @@ local function runFix()
 
     local remote, rootPos = getPaintRemote(); local brick = getBrick()
     if not remote or not brick then print("[FIX] missing tools"); return end
-    local key = "both \u{1F91D}"
+    local key = "both 🤝"
 
     -- STEP 1: Fire plastic + unanchor, retry until confirmed UNANCHORED
     local maxRetries = 8
@@ -887,7 +887,7 @@ local function runFix()
                 print("[FIX] Unanchor confirmed on attempt "..attempt)
                 break
             else
-                print("[FIX] Still anchored — retry "..attempt.."/"..maxRetries)
+                print("[FIX] Still anchored -- retry "..attempt.."/"..maxRetries)
                 -- Fire again with more force
                 pcall(function() remote:FireServer(brick, Enum.NormalId.Top, rootPos, key, LIGHT_GRAY, "unanchor", "") end)
                 task.wait(0.3)
@@ -905,7 +905,7 @@ local function runFix()
         end
     end
 
-    print("[FIX] Done — PLASTIC + UNANCHOR + LIGHT GRAY (verified)")
+    print("[FIX] Done -- PLASTIC + UNANCHOR + LIGHT GRAY (verified)")
 end
 
 -- BKIT exact call: pc.Delete.Script.Event:FireServer(Brick, HRP.Position)
@@ -938,6 +938,7 @@ local function fireDeleteTool(v)
 end
 
 -- ============================================================
+do -- page 1: PAGE 1: NUKE
 -- PAGE 1: NUKE
 -- ============================================================
 createLabel(pgNuke, "  Face Text & Colors", Color3.fromRGB(80,80,120), 13)
@@ -966,7 +967,7 @@ for _, name in ipairs(faces) do
     txt.ClearTextOnFocus = false
     Instance.new("UICorner", txt).CornerRadius = UDim.new(0, 6)
 
-    -- BP button — appends <font size='0'></font> to end of text
+    -- BP button -- appends <font size='0'></font> to end of text
     local bpBtn = Instance.new("TextButton", row)
     bpBtn.Size             = UDim2.fromOffset(30, 26)
     bpBtn.Position         = UDim2.fromOffset(54 + (CW-100) + 4, 4)
@@ -1005,6 +1006,9 @@ end, CW, 38)
 task.spawn(function() while task.wait(0.5) do if spamNuking then pcall(runNuke) end end end)
 
 -- ============================================================
+end -- close page 1
+
+do -- page 2: PAGE 2: FIX
 -- PAGE 2: FIX
 -- ============================================================
 createLabel(pgFix, "  Repair / Clean Brick", Color3.fromRGB(80,80,120), 13)
@@ -1051,7 +1055,7 @@ createButton(pgFix, "🔄  RESTORE BUILD", function()
 
         -- Check brickcollection exists
         if not getgenv or not getgenv().brickcollection then
-            print("[RESTORE] No brickcollection found — run the game script first")
+            print("[RESTORE] No brickcollection found -- run the game script first")
             return
         end
 
@@ -1076,13 +1080,13 @@ createButton(pgFix, "🔄  RESTORE BUILD", function()
         local beforeAmt    = myBricks and #myBricks:GetChildren() or 0
         local nof          = #currbc
 
-        print("[RESTORE] Starting — " .. nof .. " bricks to restore")
+        print("[RESTORE] Starting -- " .. nof .. " bricks to restore")
 
         for i, v in pairs(currbc) do
             if v ~= nil then
                 et = equipTool("Build")
                 if not et then
-                    print("[RESTORE] Build tool lost — stopping")
+                    print("[RESTORE] Build tool lost -- stopping")
                     break
                 end
 
@@ -1101,7 +1105,7 @@ createButton(pgFix, "🔄  RESTORE BUILD", function()
                     end
                 end)
 
-                print("[RESTORE] Brick " .. (nof + 1 - i) .. " of " .. nof .. " — " .. v.Name)
+                print("[RESTORE] Brick " .. (nof + 1 - i) .. " of " .. nof .. " -- " .. v.Name)
                 task.wait(ws)
 
                 -- If a new brick appeared, success for this one
@@ -1133,12 +1137,15 @@ createButton(pgFix, "🔄  RESTORE BUILD", function()
         if myNewBricks then
             print("[RESTORE] Build restored successfully!")
         else
-            print("[RESTORE] Failed — run script before everything is delcubed")
+            print("[RESTORE] Failed -- run script before everything is delcubed")
         end
     end)
 end, CW, 46)
 
 -- ============================================================
+end -- close page 2
+
+do -- page 3: PAGE 3: SLOTS
 -- PAGE 3: SLOTS
 -- ============================================================
 createLabel(pgSlots, "  Config Slots", Color3.fromRGB(80,80,120), 13)
@@ -1191,10 +1198,13 @@ createButton(pgSlots, "📂  REFRESH SLOTS", updateSlots, CW)
 updateSlots()
 
 -- ============================================================
+end -- close page 3
+
+do -- page 4: PAGE 4: AURA
 -- PAGE 4: AURA
 -- ============================================================
 createLabel(pgAura, "  Delete Aura Settings", Color3.fromRGB(80,80,120), 13)
-createLabel(pgAura, "  Fires every Heartbeat — maximum speed", Color3.fromRGB(11,95,226), 13)
+createLabel(pgAura, "  Fires every Heartbeat -- maximum speed", Color3.fromRGB(11,95,226), 13)
 
 local daura=false; local dauras=false; local dauraRange=35
 local daurapart=Instance.new("Part")
@@ -1233,6 +1243,9 @@ RunService.Heartbeat:Connect(function()
 end)
 
 -- ============================================================
+end -- close page 4
+
+do -- page 5: PAGE 5: BKIT
 -- PAGE 5: BKIT
 -- ============================================================
 createLabel(pgBkit, "  BKIT Destroyer", Color3.fromRGB(80,80,120), 13)
@@ -1256,10 +1269,13 @@ createButton(pgBkit,"💣  NUKE CUBES BURST",function()
 end, CW, 38)
 
 -- ============================================================
+end -- close page 5
+
+do -- page 6: PAGE 6: SPAM
 -- PAGE 6: SPAM
 -- ============================================================
 createLabel(pgSpam, "  Spam Build", Color3.fromRGB(80,80,120), 13)
-createLabel(pgSpam, "  Fires brick placement directly — no face-paint delays", Color3.fromRGB(11,95,226), 13)
+createLabel(pgSpam, "  Fires brick placement directly -- no face-paint delays", Color3.fromRGB(11,95,226), 13)
 
 local spamBuildActive=false; local spamBuildRate=20
 createToggle(pgSpam,"⚡  SPAM BUILD",function(v) spamBuildActive=v end, CW, 44)
@@ -1285,7 +1301,7 @@ task.spawn(function()
                         local remote=tool:FindFirstChild("Event",true) or tool:FindFirstChildWhichIsA("RemoteEvent",true)
                         local brick=getBrick()
                         if remote and brick then
-                            pcall(function() remote:FireServer(brick,Enum.NormalId.Top,hrp.Position,"both \u{1F91D}",Color3.new(0,0,0),"toxic","anchor") end)
+                            pcall(function() remote:FireServer(brick,Enum.NormalId.Top,hrp.Position,"both 🤝",Color3.new(0,0,0),"toxic","anchor") end)
                             sbCount=sbCount+1; sbCountLbl.Text="  Placed: "..sbCount.." @ "..spamBuildRate.."/s"
                         end
                     end
@@ -1296,7 +1312,10 @@ task.spawn(function()
 end)
 
 -- ============================================================
--- PAGE 7: ANTI — Protection suite (VPLI-style methods)
+end -- close page 6
+
+do -- page 7: PAGE 7: ANTI
+-- PAGE 7: ANTI -- Protection suite (VPLI-style methods)
 -- ============================================================
 createLabel(pgAnti, "  Anti / Protection", Color3.fromRGB(80,80,120), 13)
 createDivider(pgAnti)
@@ -1311,9 +1330,9 @@ local function killConn(key)
 end
 
 -- ============================================================
--- GOD MODE (anti-maptide / anti-void — user's exact working method)
+-- GOD MODE (anti-maptide / anti-void -- user's exact working method)
 -- ============================================================
--- Immediately kill void height — before anything else
+-- Immediately kill void height -- before anything else
 workspace.FallenPartsDestroyHeight = -1e9
 
 local godConn = nil
@@ -1334,7 +1353,7 @@ local function applyGodMode(char)
     hum.MaxHealth = math.huge
     hum.Health    = math.huge
 
-    -- 4. Teleport loop — fights NaN / void pull for 2 seconds
+    -- 4. Teleport loop -- fights NaN / void pull for 2 seconds
     task.spawn(function()
         for i = 1, 20 do
             if hrp and hrp.Parent then
@@ -1350,7 +1369,7 @@ local function applyGodMode(char)
         if part:IsA("BasePart") then part.CanTouch = false end
     end
 
-    -- 6. Heartbeat lock — keeps FallenPartsDestroyHeight at -1e9 every frame
+    -- 6. Heartbeat lock -- keeps FallenPartsDestroyHeight at -1e9 every frame
     addConn("godHB", RunService.Heartbeat:Connect(function()
         pcall(function() workspace.FallenPartsDestroyHeight = -1e9 end)
         if hum and hum.Parent and hum.Health < 999 then
@@ -1391,7 +1410,7 @@ createDivider(pgAnti)
 
 -- ============================================================
 -- ANTI GLITCH (VPLI exact method)
--- RenderStepped: if |Y| > 10000 → pivot back, zero all velocities
+-- RenderStepped: if |Y| > 10000 -> pivot back, zero all velocities
 -- ============================================================
 local vpliLastSafe  = nil
 local vpliGlitchConn = nil
@@ -1414,7 +1433,7 @@ createToggle(pgAnti, "🌀  Anti Glitch (VPLI)", function(v)
                             part.RotVelocity = Vector3.zero
                         end
                     end
-                    print("[ANTI GLITCH] Out of bounds — pivoted back")
+                    print("[ANTI GLITCH] Out of bounds -- pivoted back")
                 end
             end
         end)
@@ -1426,8 +1445,8 @@ end, CW, 46)
 
 -- ============================================================
 -- ANTI FREEZE (VPLI exact method)
--- Loop 0.1s: if Hielo instance exists in character → set health=0
--- (kills to break freeze state — VPLI's confirmed working method)
+-- Loop 0.1s: if Hielo instance exists in character -> set health=0
+-- (kills to break freeze state -- VPLI's confirmed working method)
 -- ============================================================
 local vpliFreezeActive = false
 
@@ -1441,7 +1460,7 @@ createToggle(pgAnti, "🧊  Anti Freeze (VPLI)", function(v)
                 if char and char:FindFirstChild("Hielo", true) then
                     local hum = char:FindFirstChildOfClass("Humanoid")
                     if hum then hum.Health = 0 end
-                    print("[ANTI FREEZE] Hielo detected — broke freeze")
+                    print("[ANTI FREEZE] Hielo detected -- broke freeze")
                 end
             end
         end)
@@ -1489,7 +1508,7 @@ createToggle(pgAnti, "👓  Anti Myopic (VPLI)", function(v)
 end, CW, 46)
 
 -- ============================================================
--- ANTI FOG (VPLI — new toggle not in old script)
+-- ANTI FOG (VPLI -- new toggle not in old script)
 -- RenderStepped: Lighting.Fog.Density = 0
 -- ============================================================
 local vpliFogConn = nil
@@ -1507,7 +1526,7 @@ createToggle(pgAnti, "🌫  Anti Fog (VPLI)", function(v)
 end, CW, 46)
 
 -- ============================================================
--- ANTI COLORLESS (VPLI — new toggle not in old script)
+-- ANTI COLORLESS (VPLI -- new toggle not in old script)
 -- RenderStepped: game.Lighting.RGB.Enabled = false
 -- ============================================================
 local vpliColorConn = nil
@@ -1525,8 +1544,8 @@ createToggle(pgAnti, "🎨  Anti Colorless (VPLI)", function(v)
 end, CW, 46)
 
 -- ============================================================
--- ANTI CRASH (VPLI — new, not in old script)
--- Watches backpack item count. If ≥ threshold → clears backpack
+-- ANTI CRASH (VPLI -- new, not in old script)
+-- Watches backpack item count. If >= threshold -> clears backpack
 -- to prevent inventory crash. Threshold adjustable via textbox.
 -- ============================================================
 local vpliCrashThreshold = 11
@@ -1552,7 +1571,7 @@ createToggle(pgAnti, "💥  Anti Crash (VPLI)", function(v)
                     if bpGui then bpGui.Enabled = false end
                     -- Clear all items
                     for _, item in ipairs(backpack:GetChildren()) do item:Destroy() end
-                    print("[ANTI CRASH] Inventory cleared (was ≥ " .. vpliCrashThreshold .. ")")
+                    print("[ANTI CRASH] Inventory cleared (was >= " .. vpliCrashThreshold .. ")")
                     -- Wait until safe count restored
                     local safeCount = math.max(1, math.floor(vpliCrashThreshold * 2 / 3))
                     repeat task.wait(0.2)
@@ -1570,7 +1589,7 @@ end, CW, 46)
 createDivider(pgAnti)
 
 -- ============================================================
--- ANTI MORPH (original — kept)
+-- ANTI MORPH (original -- kept)
 -- ============================================================
 local savedDesc = nil
 
@@ -1593,7 +1612,7 @@ createToggle(pgAnti, "👤  Anti Morph", function(v)
             if not savedDesc then return end
             local ok, cur = pcall(function() return hum:GetAppliedDescription() end)
             if ok and cur and (cur.HeadColor ~= savedDesc.HeadColor or cur.TorsoColor ~= savedDesc.TorsoColor) then
-                print("[ANTI MORPH] Morph detected — resetting")
+                print("[ANTI MORPH] Morph detected -- resetting")
                 savedDesc = nil
                 LocalPlayer:LoadCharacter()
             end
@@ -1604,7 +1623,7 @@ createToggle(pgAnti, "👤  Anti Morph", function(v)
 end, CW, 46)
 
 -- ============================================================
--- FIX VAMPIRE SWORD (VPLI best method — button)
+-- FIX VAMPIRE SWORD (VPLI best method -- button)
 -- Restore camera + re-enable Backpack CoreGui
 -- ============================================================
 createButton(pgAnti, "🧛  Fix Vampire Sword (VPLI)", function()
@@ -1622,7 +1641,7 @@ createButton(pgAnti, "🧛  Fix Vampire Sword (VPLI)", function()
 end, CW, 46)
 
 -- ============================================================
--- NO CLIP (VPLI — new toggle)
+-- NO CLIP (VPLI -- new toggle)
 -- Stepped: set all char parts CanCollide = false
 -- ============================================================
 local vpliNoClipConn = nil
@@ -1652,7 +1671,7 @@ createToggle(pgAnti, "👻  No Clip (VPLI)", function(v)
 end, CW, 46)
 
 -- ============================================================
--- ANTI JAIL (original — kept)
+-- ANTI JAIL (original -- kept)
 -- ============================================================
 local lastOpenPos = nil
 
@@ -1678,7 +1697,7 @@ createToggle(pgAnti, "⛓  Anti Jail", function(v)
             if blocked < 4 then
                 lastOpenPos = pos
             else
-                print("[ANTI JAIL] Jailed — escaping")
+                print("[ANTI JAIL] Jailed -- escaping")
                 local parts = {}
                 for _, p in ipairs(char:GetDescendants()) do
                     if p:IsA("BasePart") and p.CanCollide then
@@ -1700,6 +1719,9 @@ end, CW, 46)
 
 
 -- ============================================================
+end -- close page 7
+
+do -- page 8: PAGE 8: SCRIPTS
 -- PAGE 8: SCRIPTS
 -- ============================================================
 createLabel(pgScripts, "  Scripts", Color3.fromRGB(80,80,120), 13)
@@ -1759,8 +1781,11 @@ end)
 
 -- ============================================================
 -- ============================================================
+end -- close page 8
+
+do -- page 9: PAGE 9: AUTO DONATE
 -- PAGE 9: AUTO DONATE
--- Spams ;donate <player> <yourtime> — interval adjustable
+-- Spams ;donate <player> <yourtime> -- interval adjustable
 -- ============================================================
 createLabel(pgDonate, "  Auto Donate", Color3.fromRGB(80,80,120), 13)
 createLabel(pgDonate, "  Spams ;donate at your chosen interval", Color3.fromRGB(11,95,226), 11)
@@ -1778,7 +1803,7 @@ donateBox:GetPropertyChangedSignal("Text"):Connect(function()
     donateTarget = donateBox.Text
 end)
 
--- Interval input — numbers only
+-- Interval input -- numbers only
 createLabel(pgDonate, "  Interval (seconds)", Color3.fromRGB(80,80,120), 12)
 local donateIntervalBox = createTextBox(pgDonate, "5", CW, 34)
 donateIntervalBox.ClearTextOnFocus = false
@@ -1858,8 +1883,11 @@ createButton(pgDonate, "💬  Send Once Now", function()
 end, CW, 38)
 
 -- ============================================================
+end -- close page 9
+
+do -- page 10: PAGE 10: ABUSE
 -- PAGE 10: ABUSE
--- Targets a player — spams admin commands at chosen interval
+-- Targets a player -- spams admin commands at chosen interval
 -- Abuse tab
 -- ============================================================
 createLabel(pgAbuse, "  Abuse", Color3.fromRGB(80,80,120), 13)
@@ -1878,7 +1906,7 @@ abuseBox:GetPropertyChangedSignal("Text"):Connect(function()
     abuseTarget = abuseBox.Text
 end)
 
--- Interval input — numbers only
+-- Interval input -- numbers only
 createLabel(pgAbuse, "  Interval (seconds)", Color3.fromRGB(80,80,120), 12)
 local abuseIntervalBox = createTextBox(pgAbuse, "3", CW, 34)
 abuseIntervalBox.ClearTextOnFocus = false
@@ -2032,6 +2060,9 @@ createButton(pgAbuse, "🔦  Check Arkenstone Tool", function()
 end, CW, 38)
 
 -- ============================================================
+end -- close page 10
+
+do -- page 11: PAGE 11: SAVE ENLIGHTEN
 -- PAGE 11: SAVE ENLIGHTEN
 -- Uses Classic Bucket gear (ID 25162389) to clone self
 -- Detects if The Arkenstone tool is equipped before cloning
@@ -2061,7 +2092,7 @@ createButton(pgSaveEnli, "🔦  Check Arkenstone Tool", function()
     if enli then
         local loc = enli.Parent == LocalPlayer.Character and "Equipped ✓" or "In Backpack"
         setEnliStatus(loc, Color3.fromRGB(11, 200, 80))
-        print("[SAVE ENLI] ✓ The Arkenstone found — " .. loc)
+        print("[SAVE ENLI] ✓ The Arkenstone found -- " .. loc)
     else
         setEnliStatus("NOT FOUND ✗", Color3.fromRGB(255, 60, 60))
         print("[SAVE ENLI] ✗ The Arkenstone NOT found in character or backpack!")
@@ -2072,11 +2103,11 @@ createDivider(pgSaveEnli)
 createLabel(pgSaveEnli, "  Bucket Gear Clone", Color3.fromRGB(80,80,120), 12)
 createLabel(pgSaveEnli, "  Runs: gear me 25162389 (Classic Bucket)", Color3.fromRGB(60,60,90), 11)
 
--- Core save function: check enli → equip it → give bucket gear → clone
+-- Core save function: check enli -> equip it -> give bucket gear -> clone
 local function doSaveEnlighten()
     local enli = getEnlightenTool()
     if not enli then
-        setEnliStatus("NOT FOUND — equip The Arkenstone first! ✗", Color3.fromRGB(255, 60, 60))
+        setEnliStatus("NOT FOUND -- equip The Arkenstone first! ✗", Color3.fromRGB(255, 60, 60))
         print("[SAVE ENLI] ✗ No The Arkenstone found! Equip it first.")
         return false
     end
@@ -2087,7 +2118,7 @@ local function doSaveEnlighten()
         task.wait(0.2)
     end
     setEnliStatus("Cloning...", Color3.fromRGB(11, 200, 80))
-    print("[SAVE ENLI] Step 1 — ;clone me")
+    print("[SAVE ENLI] Step 1 -- ;clone me")
 
     -- Step 1: ;clone me
     coroutine.wrap(function()
@@ -2100,15 +2131,15 @@ local function doSaveEnlighten()
     task.wait(2)
 
     -- Step 3: ;gear me 25162389 (Classic Bucket steal)
-    print("[SAVE ENLI] Step 2 — ;gear me 25162389")
+    print("[SAVE ENLI] Step 2 -- ;gear me 25162389")
     coroutine.wrap(function()
         pcall(function()
             game:GetService("TextChatService").TextChannels.RBXGeneral:SendAsync(";gear me 25162389")
         end)
     end)()
 
-    setEnliStatus("Done ✓ (clone → bucket)", Color3.fromRGB(11, 200, 80))
-    print("[SAVE ENLI] ✓ Done — clone sent, bucket gear given")
+    setEnliStatus("Done ✓ (clone -> bucket)", Color3.fromRGB(11, 200, 80))
+    print("[SAVE ENLI] ✓ Done -- clone sent, bucket gear given")
     return true
 end
 
@@ -2175,7 +2206,7 @@ local STASH_DATA = {
 
 -- Compute stash center (average of all block positions) for TP
 -- Stash room is the big structure at the end of the JSON
--- Floor: Y=2447, X~12007, Z~2556 — hardcoded to actual room interior
+-- Floor: Y=2447, X~12007, Z~2556 -- hardcoded to actual room interior
 local STASH_TP = Vector3.new(12007, 2455, 2556)
 
 local stashBuilding  = false
@@ -2188,9 +2219,9 @@ local function setStashStatus(txt, col)
     stashStatusLbl.TextColor3 = col or Color3.fromRGB(116,113,117)
 end
 
--- Slider: delay between each block (0.1s – 2s)
+-- Slider: delay between each block (0.1s - 2s)
 createSlider(pgSaveEnli, "Build Delay (sec)", 1, 20, 2, function(v)
-    stashBuildWait = v / 10  -- slider 1-20 → 0.1s-2.0s
+    stashBuildWait = v / 10  -- slider 1-20 -> 0.1s-2.0s
 end, CW)
 
 -- Build Stash button
@@ -2258,12 +2289,12 @@ createButton(pgSaveEnli, "🏗  BUILD STASH", function()
     end)
 end, CW, 46)
 
--- TP to Stash — goes to actual room interior (X=12007, Y=2455, Z=2556)
+-- TP to Stash -- goes to actual room interior (X=12007, Y=2455, Z=2556)
 createButton(pgSaveEnli, "📍  TP TO STASH", function()
     local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
     if hrp then
         hrp.CFrame = CFrame.new(STASH_TP)
-        setStashStatus("Teleported ✓ → " .. tostring(STASH_TP), Color3.fromRGB(11,200,80))
+        setStashStatus("Teleported ✓ -> " .. tostring(STASH_TP), Color3.fromRGB(11,200,80))
         print("[STASH] Teleported to stash: " .. tostring(STASH_TP))
     else
         print("[STASH] No character found")
@@ -2272,6 +2303,9 @@ end, CW, 42)
 
 
 -- ============================================================
+end -- close page 11
+
+do -- page 12: PAGE 12: AUTO BUILD
 -- PAGE 12: AUTO BUILD  (Extra Stuff Updated by 2AREYOUMENTAL110)
 -- ============================================================
 
@@ -2313,7 +2347,7 @@ local function es_mode()
     return "normal"
 end
 
--- ─── SPAM BUILD ─────────────────────────────────────────────────────────
+-- --- SPAM BUILD ---------------------------------------------------------
 createLabel(pgAutoBuild, "  Spam Build", Color3.fromRGB(80,80,120), 12)
 
 local es_spmbl = false
@@ -2322,10 +2356,12 @@ createToggle(pgAutoBuild, "  Spam Blocks at Your Position", function(v)
     if v then task.spawn(function()
         while es_spmbl do
             task.wait(0.1)
-            local char = LocalPlayer.Character; if not char then continue end
-            local hrp = char:FindFirstChild("HumanoidRootPart"); if not hrp then continue end
-            local tool = es_equip("Build"); if not tool then continue end
-            es_build(tool, workspace.Terrain, Enum.NormalId.Top, hrp.Position - Vector3.new(0,1.5,0), es_mode())
+            local char = LocalPlayer.Character
+            local hrp = char and char:FindFirstChild("HumanoidRootPart")
+            local tool = hrp and es_equip("Build")
+            if tool then
+                es_build(tool, workspace.Terrain, Enum.NormalId.Top, hrp.Position - Vector3.new(0,1.5,0), es_mode())
+            end
         end
     end) end
 end, CW)
@@ -2336,17 +2372,19 @@ createToggle(pgAutoBuild, "  Spam Signs at Your Position", function(v)
     if v then task.spawn(function()
         while es_spmsi do
             task.wait(0.1)
-            local char = LocalPlayer.Character; if not char then continue end
-            local hrp = char:FindFirstChild("HumanoidRootPart"); if not hrp then continue end
-            local tool = es_equip("Sign"); if not tool then continue end
-            es_build(tool, workspace.Terrain, Enum.NormalId.Top, hrp.Position - Vector3.new(0,1.5,0), "normal")
+            local char = LocalPlayer.Character
+            local hrp = char and char:FindFirstChild("HumanoidRootPart")
+            local tool = hrp and es_equip("Sign")
+            if tool then
+                es_build(tool, workspace.Terrain, Enum.NormalId.Top, hrp.Position - Vector3.new(0,1.5,0), "normal")
+            end
         end
     end) end
 end, CW)
 
 createDivider(pgAutoBuild)
 
--- ─── TOXIFY AURA ────────────────────────────────────────────────────────
+-- --- TOXIFY AURA --------------------------------------------------------
 createLabel(pgAutoBuild, "  Toxify Aura", Color3.fromRGB(80,80,120), 12)
 createLabel(pgAutoBuild, "  Places toxic brick under nearby players (<40 studs)", Color3.fromRGB(11,95,226), 11)
 
@@ -2368,32 +2406,34 @@ createToggle(pgAutoBuild, "  Toxify Aura", function(v)
     if v then task.spawn(function()
         while es_tkill do
             task.wait()
-            local char = LocalPlayer.Character; if not char then continue end
-            local hrp = char:FindFirstChild("HumanoidRootPart"); if not hrp then continue end
-            if not es_toxbrick or not es_toxbrick:IsDescendantOf(workspace) then
-                local pt = es_equip("Build") or es_equip("Paint")
-                if pt then
-                    es_buildingtox = true
-                    local opos = hrp.CFrame
-                    local remote = pt:FindFirstChild("Event",true) or pt:FindFirstChildWhichIsA("RemoteEvent",true)
-                    if remote then
-                        local offPos = Vector3.new(math.random(10000,100000),math.random(1000,5000),math.random(10000,100000))
-                        local key = "both \u{1F91D}"
-                        pcall(function() remote:FireServer(ReplicatedStorage:FindFirstChild("Brick"), Enum.NormalId.Top, offPos, key, Color3.new(0,0,0), "toxic", "anchor") end)
+            local char = LocalPlayer.Character
+            local hrp = char and char:FindFirstChild("HumanoidRootPart")
+            if char and hrp then
+                if not es_toxbrick or not es_toxbrick:IsDescendantOf(workspace) then
+                    local pt = es_equip("Build") or es_equip("Paint")
+                    if pt then
+                        es_buildingtox = true
+                        local opos = hrp.CFrame
+                        local remote = pt:FindFirstChild("Event",true) or pt:FindFirstChildWhichIsA("RemoteEvent",true)
+                        if remote then
+                            local offPos = Vector3.new(math.random(10000,100000),math.random(1000,5000),math.random(10000,100000))
+                            local key = "both 🤝"
+                            pcall(function() remote:FireServer(ReplicatedStorage:FindFirstChild("Brick"), Enum.NormalId.Top, offPos, key, Color3.new(0,0,0), "toxic", "anchor") end)
+                        end
+                        task.wait(0.5); es_buildingtox = false
+                        hrp.CFrame = opos
                     end
-                    task.wait(0.5); es_buildingtox = false
-                    hrp.CFrame = opos
                 end
-            end
-            if es_toxbrick and es_toxbrick:IsDescendantOf(workspace) then
-                local bt = es_equip("Build"); if not bt then continue end
-                for _, plr in pairs(Players:GetPlayers()) do
-                    if plr ~= LocalPlayer and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
-                        local phrp = plr.Character.HumanoidRootPart
-                        if (phrp.Position - hrp.Position).Magnitude < 40 then
-                            local pos = (phrp.CFrame * CFrame.new(0,0,-phrp.Velocity.Magnitude/2.5)).Position
-                            es_build(bt, es_toxbrick, Enum.NormalId.Top, pos, "detailed")
-                            task.wait(0.1)
+                local bt = es_toxbrick and es_toxbrick:IsDescendantOf(workspace) and es_equip("Build")
+                if bt then
+                    for _, plr in pairs(Players:GetPlayers()) do
+                        if plr ~= LocalPlayer and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
+                            local phrp = plr.Character.HumanoidRootPart
+                            if (phrp.Position - hrp.Position).Magnitude < 40 then
+                                local pos = (phrp.CFrame * CFrame.new(0,0,-phrp.Velocity.Magnitude/2.5)).Position
+                                es_build(bt, es_toxbrick, Enum.NormalId.Top, pos, "detailed")
+                                task.wait(0.1)
+                            end
                         end
                     end
                 end
@@ -2404,7 +2444,7 @@ end, CW)
 
 createDivider(pgAutoBuild)
 
--- ─── DELETE AURA ────────────────────────────────────────────────────────
+-- --- DELETE AURA --------------------------------------------------------
 createLabel(pgAutoBuild, "  Delete Aura", Color3.fromRGB(80,80,120), 12)
 createLabel(pgAutoBuild, "  WARNING: also deletes your own builds", Color3.fromRGB(200,100,0), 11)
 
@@ -2474,7 +2514,7 @@ end)()
 
 createDivider(pgAutoBuild)
 
--- ─── SELECT BLOCK + SPAM SIDE ───────────────────────────────────────────
+-- --- SELECT BLOCK + SPAM SIDE -------------------------------------------
 createLabel(pgAutoBuild, "  Select Block & Spam Side", Color3.fromRGB(80,80,120), 12)
 createLabel(pgAutoBuild, "  Tip: Use detailed mode to spawn blocks at your feet", Color3.fromRGB(11,95,226), 11)
 
@@ -2557,7 +2597,7 @@ end
 -- Default Top selected
 if es_sideBtns[2] then es_sideBtns[2].BackgroundColor3=blueColor; es_sideBtns[2].TextColor3=Color3.new(1,1,1) end
 
--- Select side by clicking (exact Extra Stuff ss toggle — enabled by default)
+-- Select side by clicking (exact Extra Stuff ss toggle -- enabled by default)
 local es_ss = true
 createToggle(pgAutoBuild, "  Select Side by Clicking Block Face", function(v)
     es_ss = v
@@ -2568,20 +2608,24 @@ createToggle(pgAutoBuild, "  Spam Selected Block Side", function(v)
     if v then task.spawn(function()
         while es_spmsb do
             task.wait(0.05)
-            local char = LocalPlayer.Character; if not char then continue end
-            local hrp = char:FindFirstChild("HumanoidRootPart"); if not hrp then continue end
-            if not es_sblock or not es_sblock.Parent then continue end
-            local tool = es_equip("Build"); if not tool then continue end
-            local mode = es_mode()
-            local ok, err = pcall(function()
-                es_build(tool, es_sblock, es_side, hrp.Position - Vector3.new(0,1.5,0), mode)
-            end)
-            if not ok then print("[AUTO BUILD] "..tostring(err)) end
+            local char = LocalPlayer.Character
+            local hrp = char and char:FindFirstChild("HumanoidRootPart")
+            local block = es_sblock and es_sblock.Parent and es_sblock
+            local tool = (hrp and block) and es_equip("Build")
+            if tool then
+                local ok, err = pcall(function()
+                    es_build(tool, block, es_side, hrp.Position - Vector3.new(0,1.5,0), es_mode())
+                end)
+                if not ok then print("[AUTO BUILD] "..tostring(err)) end
+            end
         end
     end) end
 end, CW)
 
--- PAGE 13: CREDITS — text only, no buttons
+end -- close page 12
+
+do -- page 13: PAGE 13: CREDITS
+-- PAGE 13: CREDITS -- text only, no buttons
 -- ============================================================
 local credLbl = Instance.new("TextLabel", pgCredits)
 credLbl.Size                   = UDim2.fromOffset(CW, 300)
@@ -2595,6 +2639,8 @@ credLbl.TextXAlignment         = Enum.TextXAlignment.Center
 credLbl.TextYAlignment         = Enum.TextYAlignment.Center
 
 -- ============================================================
+end -- close page 13
+
 -- INIT
 -- ============================================================
 updatePage()
