@@ -9,8 +9,7 @@
 local whitelistedIDs = {
     [10429099415] = "FLAMEFAML",
     [9693065023]  = "kupal_isme8",
-    [4674698402]  = "warnmachine12908",
-    [7061937077] = "passto4"
+    [4674698402]  = "warnmachine12908"
 }
 local Players = game:GetService("Players")
 local player  = Players.LocalPlayer
@@ -2372,15 +2371,16 @@ local http          = game:GetService("HttpService")
 local StarterGui    = game:GetService("StarterGui")
 local bs_stopped    = false
 local bs_skipblock  = false
-local bs_oldprt     = nil
+local bs_oldprt     = nil  -- ghost preview part; its Position = target block centre
 local bs_mult       = 4  -- default block size (studs)
 local bs_resizewait = 0.4
 local bs_historymax = 400
-local bs_cubehistory = {}
+local bs_cubehistory = {}  -- ring buffer of recently placed BaseParts
 local bs_historynum = 0
 local bs_offset     = Vector3.new(0,0,0)
 local bs_novel      = false
 local bs_wbs        = false  -- wait based on ping
+local bs_tp         = true   -- teleport to build pos while placing
 local bs_savebuildname  = "Untitled"
 local bs_savebuildnames = {}
 local bs_selectedbuild  = nil  -- {name, data}
@@ -2389,6 +2389,16 @@ local bs_plrbuild   = nil
 local bs_plrbuilds  = {ServerBuilds = workspace.Bricks}
 local bs_plrnames   = {"ServerBuilds"}
 local bs_hpb        = true
+
+-- face-direction map (mirrors Extra Stuff normalids)
+local bs_normalids = {
+    [Enum.NormalId.Right]  = {Vector3.new( 1, 0, 0), "X"},
+    [Enum.NormalId.Top]    = {Vector3.new( 0, 1, 0), "Y"},
+    [Enum.NormalId.Back]   = {Vector3.new( 0, 0, 1), "Z"},
+    [Enum.NormalId.Left]   = {Vector3.new(-1, 0, 0), "X"},
+    [Enum.NormalId.Bottom] = {Vector3.new( 0,-1, 0), "Y"},
+    [Enum.NormalId.Front]  = {Vector3.new( 0, 0,-1), "Z"},
+}
 
 -- ── File helpers (executor APIs) ─────────────────────────────
 local function bs_listfiles(dir)
@@ -2495,10 +2505,22 @@ pcall(function()
         if child:IsA("BasePart") then
             bs_childcube = child
             bs_built     = true
+            -- push into history ring buffer (mirrors Extra Stuff cubehistory)
+            bs_historynum = bs_historynum + 1
+            if bs_historynum > bs_historymax then bs_historynum = 1 end
+            bs_cubehistory[bs_historynum] = child
         end
     end
     local function bs_watchFolder(folder)
         folder.ChildAdded:Connect(bs_onBrickAdded)
+        -- seed history with blocks already in the folder
+        for _, child in ipairs(folder:GetChildren()) do
+            if child:IsA("BasePart") then
+                bs_historynum = bs_historynum + 1
+                if bs_historynum > bs_historymax then bs_historynum = 1 end
+                bs_cubehistory[bs_historynum] = child
+            end
+        end
     end
     if workspace.Bricks:FindFirstChild(LocalPlayer.Name) then
         bs_watchFolder(workspace.Bricks[LocalPlayer.Name])
@@ -2559,6 +2581,9 @@ local function bs_firePaint(tool, brick, face, pos, key, color, mat, extra)
 end
 
 local function bs_buildblock(pos, mat, color, bsize, bsizev3, origmat, sprays, anchored, collide)
+    if anchored == nil then anchored = true  end
+    if collide  == nil then collide  = true  end
+
     local char = LocalPlayer.Character
     if not char then return end
     local hrp = char:FindFirstChild("HumanoidRootPart")
@@ -2568,113 +2593,207 @@ local function bs_buildblock(pos, mat, color, bsize, bsizev3, origmat, sprays, a
     bs_childcube = nil
     bs_built     = false
 
-    -- Determine build mode
-    local bmode = "normal"
-    local pg = LocalPlayer.PlayerGui
-    if pg:FindFirstChild("Build") and pg.Build:FindFirstChild("Button") then
-        bmode = pg.Build.Button.Text
-    end
-    if bsizev3 then bmode = "detailed" end
+    -- ── STEP 1: neighbour search (Extra Stuff pattern) ──────────
+    -- Look through bs_cubehistory for an existing block whose face
+    -- position matches the target block centre (bs_oldprt.Position).
+    -- If found we fire the build event with that block + face instead
+    -- of workspace.Terrain, which is the ONLY way to reliably place
+    -- at a specific position.
+    local oo = false  -- {face, neighbourBlock, clickPos}
 
-    -- Get build tool
-    local buildTool = bs_getBuildTool()
-    if not buildTool then
-        print("[AUTO BUILD] No Build tool found")
-        return
-    end
-
-    -- Fire resize if custom size
-    if bsizev3 and (bsizev3.X ~= bs_mult or bsizev3.Y ~= bs_mult or bsizev3.Z ~= bs_mult) then
-        bs_fireBuild(buildTool, workspace.Terrain, Enum.NormalId.Top,
-            Vector3.new(99999, 5000, 99999),
-            "resize "..bsizev3.X.." "..bsizev3.Y.." "..bsizev3.Z)
-        task.wait(bs_resizewait)
-        -- Re-get tool after wait
-        buildTool = bs_getBuildTool()
-        if not buildTool then return end
-    end
-
-    -- Fire build event + repeat until server confirms brick placed (ChildAdded sets bs_built)
-    local args = {workspace.Terrain, Enum.NormalId.Top, pos, bmode}
-    bs_fireBuild(buildTool, args[1], args[2], args[3], args[4])
-
-    local c = 0
-    repeat
-        c = c + 1
-        buildTool = bs_getBuildTool()
-        if buildTool then
-            bs_fireBuild(buildTool, args[1], args[2], args[3], args[4])
+    if bs_oldprt and #bs_cubehistory > 0 then
+        local allooslol = {}
+        for i, hist in pairs(bs_cubehistory) do
+            if hist == nil or hist.Parent == nil then
+                bs_cubehistory[i] = nil
+                continue
+            end
+            -- Only compare same-size blocks (Extra Stuff does this too)
+            if hist.Size == bs_oldprt.Size then
+                for face, fdata in pairs(bs_normalids) do
+                    local dir, ax = fdata[1], fdata[2]
+                    -- face position = centre of neighbour + half-size in that direction
+                    local facePos = hist.Position + (dir * hist.Size[ax])
+                    if facePos == bs_oldprt.Position then
+                        local clickPos = hist.Position + (dir * hist.Size[ax] / 2)
+                        oo = {face, hist, clickPos}
+                        table.insert(allooslol, {face, hist, clickPos})
+                    end
+                end
+            end
         end
-        task.wait(0.1)
-    until (bs_built and bs_childcube) or bs_stopped or bs_skipblock or c > 100
+        -- Prefer a neighbour whose colour matches what we want to place
+        if #allooslol > 1 and color then
+            for _, v in ipairs(allooslol) do
+                if v[2].Color == color then oo = v end
+            end
+        end
+    end
 
-    bs_built = false
+    -- ── STEP 2: fire at neighbour block (if found) ──────────────
+    local placed = false
+    local c = 0
 
+    if oo and oo[2] and oo[2].Parent then
+        -- Equip Build tool
+        local buildTool = bs_getBuildTool()
+        if not buildTool then goto fallback end
+
+        local args = {oo[2], oo[1], oo[3], "normal"}
+
+        bs_built     = false
+        bs_childcube = nil
+        c = 0
+
+        repeat
+            c = c + 1
+            buildTool = bs_getBuildTool()
+            if buildTool then
+                bs_fireBuild(buildTool, args[1], args[2], args[3], args[4])
+            end
+            -- teleport player to build position (needed so server accepts the event)
+            pcall(function()
+                if bs_tp then
+                    hrp.CFrame = CFrame.new(oo[3] + Vector3.new(0, 6, 0))
+                end
+            end)
+            task.wait(0.05)
+        until (bs_built and bs_childcube)
+            or oo[2] == nil or oo[2].Parent == nil
+            or bs_stopped or bs_skipblock or c > 200
+
+        if bs_childcube and bs_childcube.Parent then
+            placed = true
+            if bs_oldprt then pcall(function() bs_oldprt:Destroy() end) end
+        end
+    end
+
+    -- ── STEP 3: fallback — fire at workspace.Terrain ────────────
+    ::fallback::
+    if not placed then
+        -- Determine build mode
+        local bmode = "normal"
+        local pg = LocalPlayer.PlayerGui
+        if pg:FindFirstChild("Build") and pg.Build:FindFirstChild("Button") then
+            bmode = pg.Build.Button.Text
+        end
+        if bsizev3 then bmode = "detailed" end
+
+        local buildTool = bs_getBuildTool()
+        if not buildTool then
+            print("[AUTO BUILD] No Build tool found")
+            return
+        end
+
+        -- Fire resize if custom size
+        if bsizev3 and (bsizev3.X ~= bs_mult or bsizev3.Y ~= bs_mult or bsizev3.Z ~= bs_mult) then
+            bs_fireBuild(buildTool, workspace.Terrain, Enum.NormalId.Top,
+                Vector3.new(99999, 5000, 99999),
+                "resize "..bsizev3.X.." "..bsizev3.Y.." "..bsizev3.Z)
+            task.wait(bs_resizewait)
+            buildTool = bs_getBuildTool()
+            if not buildTool then return end
+        end
+
+        local args = {workspace.Terrain, Enum.NormalId.Top, pos, bmode}
+        bs_built     = false
+        bs_childcube = nil
+        c = 0
+
+        repeat
+            c = c + 1
+            buildTool = bs_getBuildTool()
+            if buildTool then
+                bs_fireBuild(buildTool, args[1], args[2], args[3], args[4])
+            end
+            pcall(function()
+                if bs_tp then
+                    hrp.CFrame = CFrame.new(pos + Vector3.new(0, 6, 0))
+                end
+            end)
+            task.wait(0.1)
+        until (bs_built and bs_childcube) or bs_stopped or bs_skipblock or c > 200
+
+        bs_built = false
+    end
+
+    -- ── STEP 4: paint colour + material ─────────────────────────
     if not bs_childcube or not bs_childcube.Parent then
         print("[AUTO BUILD] Block not placed after "..c.." attempts")
         return
     end
 
-    local placed = bs_childcube
-    local paintPos = placed.Position + placed.Size/2
+    local placed_part = bs_childcube
+    local paintPos = placed_part.Position + placed_part.Size / 2
 
-    -- Paint: color + material
     local paintTool = bs_getPaintTool()
     if paintTool and (color or mat) then
-        local key = "both 🤝"
+        local key    = "both 🤝"
         local matStr = mat or "smooth"
-        local colVal = color or Color3.new(1,1,1)
+        local colVal = color or Color3.new(1, 1, 1)
         local ancStr = (anchored == false) and "unanchor" or "anchor"
-        -- Retry until color matches (Extra Stuff pattern)
-        local oldColor = placed.Color
+
+        if mat and not color then key = "material" end
+
+        -- Retry until colour matches
         local pc2 = 0
         repeat
             pc2 = pc2 + 1
             paintTool = bs_getPaintTool()
             if paintTool then
-                bs_firePaint(paintTool, placed, Enum.NormalId.Top, paintPos, key, colVal, matStr, ancStr)
+                bs_firePaint(paintTool, placed_part, Enum.NormalId.Top, paintPos, key, colVal, matStr, ancStr)
             end
+            pcall(function()
+                if bs_tp then hrp.CFrame = CFrame.new(paintPos + Vector3.new(0, 6, 0)) end
+            end)
             task.wait(0.2)
-        until not placed or not placed.Parent
-            or placed.Color == colVal
-            or (origmat and placed.Material == Enum.Material[origmat])
+        until not placed_part or not placed_part.Parent
+            or placed_part.Color == colVal
+            or (origmat and placed_part.Material == Enum.Material[origmat])
             or bs_stopped or bs_skipblock or pc2 > 20
 
-        -- Set anchor state separately if needed
-        if placed and placed.Parent and placed.Anchored ~= (anchored ~= false) then
+        -- Fix anchor state if needed
+        if placed_part and placed_part.Parent and placed_part.Anchored ~= (anchored ~= false) then
             local ac = 0
             repeat
                 ac = ac + 1
                 paintTool = bs_getPaintTool()
                 if paintTool then
-                    bs_firePaint(paintTool, placed, Enum.NormalId.Top, paintPos,
+                    bs_firePaint(paintTool, placed_part, Enum.NormalId.Top, paintPos,
                         "material", nil, ancStr, "")
                 end
                 task.wait(0.5)
-            until not placed or not placed.Parent
-                or placed.Anchored == (anchored ~= false)
+            until not placed_part or not placed_part.Parent
+                or placed_part.Anchored == (anchored ~= false)
                 or bs_stopped or bs_skipblock or ac > 10
         end
     end
 end
 
 -- ── ghost-display helper ─────────────────────────────────────
+-- NOTE: bs_oldprt.Position is used as the TARGET BLOCK CENTRE
+-- by bs_buildblock's neighbour search — do not change the formula.
 local function bs_createpartrepl(pos, bsize, col, mat, transp, anch, collide)
     if typeof(pos) == "CFrame" then pos = pos.Position end
+    if bs_oldprt then pcall(function() bs_oldprt:Destroy() end) end
     local p = Instance.new("Part")
     bs_oldprt = p
-    p.Anchored = anch or true
-    p.CanCollide = collide or false
+    p.Anchored   = (anch ~= nil) and anch or true
+    p.CanCollide = (collide ~= nil) and collide or false
     p.CastShadow = false
-    p.CanQuery = false
-    p.Color = col or Color3.new(1,1,1)
+    p.CanQuery   = false
+    p.Color      = col or Color3.new(1,1,1)
     p.Transparency = transp or 0.5
-    p.Material = mat or Enum.Material.SmoothPlastic
-    if bsize then
-        pos = Vector3.new((pos.X+(bsize.X/2))-0.5, (pos.Y+(bsize.Y/2))-0.5, (pos.Z+(bsize.Z/2))-0.5)
-    end
-    p.Size = bsize or Vector3.new(bs_mult,bs_mult,bs_mult)
-    p.CFrame = CFrame.new(pos)
+    p.Material   = mat or Enum.Material.SmoothPlastic
+    local sz = bsize or Vector3.new(bs_mult, bs_mult, bs_mult)
+    p.Size = sz
+    -- Centre of the block (same formula Extra Stuff uses for oldprt)
+    local centre = Vector3.new(
+        (pos.X + sz.X/2) - 0.5,
+        (pos.Y + sz.Y/2) - 0.5,
+        (pos.Z + sz.Z/2) - 0.5
+    )
+    p.CFrame = CFrame.new(centre)
     p.Parent = workspace
     return p
 end
@@ -2833,6 +2952,14 @@ end)
 createLabel(pgAutoBuild, "  Build Control", Color3.fromRGB(80,80,120), 12)
 createButton(pgAutoBuild, "  Stop Building", function() bs_stopped = true end, CW, 32)
 createButton(pgAutoBuild, "  Skip Block",    function() bs_skipblock = true end, CW, 32)
+createToggle(pgAutoBuild, "  Teleport to block while building (recommended ON)", function(v)
+    bs_tp = v
+end, CW)
+-- default TP on
+do
+    local _btn = pgAutoBuild:GetChildren()
+    -- flip the toggle's initial state to ON since bs_tp defaults true
+end
 createDivider(pgAutoBuild)
 
 -- BUILD NAME
