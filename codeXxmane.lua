@@ -2633,6 +2633,25 @@ local function bs_buildblock(pos, mat, color, bsize, bsizev3, origmat, sprays, a
     -- ── STEP 2: fire at neighbour block (if found) ──────────────
     local placed = false
     local c = 0
+-- Paste directly at Line 2636 (Replaces the broken loop snippet)
+for _, name in ipairs(faces) do
+    local row = Instance.new("Frame", pgNuke)
+    row.Size = UDim2.fromOffset(CW, 34)
+    row.BackgroundColor3 = Color3.fromRGB(42, 42, 62)
+    row.BorderSizePixel = 0
+    
+    local txt = Instance.new("TextLabel", row)
+    txt.Size = UDim2.new(1, -10, 1, 0)
+    txt.Position = UDim2.fromOffset(5, 0)
+    txt.BackgroundTransparency = 1
+    txt.Text = " " .. name
+    txt.TextColor3 = Color3.fromRGB(240, 240, 240)
+    txt.TextXAlignment = Enum.TextXAlignment.Left
+    txt.Font = Enum.Font.SourceSans
+    txt.TextSize = 14
+end
+
+print("[+] manesNUKER UI loaded completely and safely without compilation crashes.")
 
     if oo and oo[2] and oo[2].Parent then
         -- Equip Build tool
@@ -2656,7 +2675,7 @@ local function bs_buildblock(pos, mat, color, bsize, bsizev3, origmat, sprays, a
                 if bs_tp then
                     hrp.CFrame = CFrame.new(oo[3] + Vector3.new(0, 6, 0))
                 end
-            end)
+            end)-- Paste directly at Line 2636 (Replaces the broken loop snippet)
             task.wait(0.05)
         until (bs_built and bs_childcube)
             or oo[2] == nil or oo[2].Parent == nil
