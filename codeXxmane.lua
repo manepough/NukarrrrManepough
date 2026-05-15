@@ -9,7 +9,8 @@
 local whitelistedIDs = {
     [10429099415] = "FLAMEFAML",
     [9693065023]  = "kupal_isme8",
-    [4674698402]  = "warnmachine12908"
+    [4674698402]  = "warnmachine12908",
+    [7800866881] = "kuromi_2025year"
 }
 local Players = game:GetService("Players")
 local player  = Players.LocalPlayer
