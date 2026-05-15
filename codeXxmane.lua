@@ -1226,6 +1226,7 @@ Instance.new("UIListLayout", slotListFrame).Padding = UDim.new(0, 4)
 local function updateSlots()
     for _,v in pairs(slotListFrame:GetChildren()) do if v:IsA("TextButton") then v:Destroy() end end
     if not isfolder or not isfolder("WindConfigs") then return end
+    if not listfiles then return end
     for _,file in pairs(listfiles("WindConfigs")) do
         local name = file:match("WindConfigs/(.+)%.json") or file:match("WindConfigs\\(.+)%.json")
         if name then
@@ -2431,7 +2432,7 @@ end
 pcall(function()
     local files = bs_listfiles("")
     if not table.find(files,"TheChosenOneBuilds/") and not table.find(files,"TheChosenOneBuilds") then
-        makefolder("TheChosenOneBuilds")
+        if makefolder then makefolder("TheChosenOneBuilds") end
     end
 end)
 pcall(function()
@@ -2633,30 +2634,11 @@ local function bs_buildblock(pos, mat, color, bsize, bsizev3, origmat, sprays, a
     -- ── STEP 2: fire at neighbour block (if found) ──────────────
     local placed = false
     local c = 0
--- Paste directly at Line 2636 (Replaces the broken loop snippet)
-for _, name in ipairs(faces) do
-    local row = Instance.new("Frame", pgNuke)
-    row.Size = UDim2.fromOffset(CW, 34)
-    row.BackgroundColor3 = Color3.fromRGB(42, 42, 62)
-    row.BorderSizePixel = 0
-    
-    local txt = Instance.new("TextLabel", row)
-    txt.Size = UDim2.new(1, -10, 1, 0)
-    txt.Position = UDim2.fromOffset(5, 0)
-    txt.BackgroundTransparency = 1
-    txt.Text = " " .. name
-    txt.TextColor3 = Color3.fromRGB(240, 240, 240)
-    txt.TextXAlignment = Enum.TextXAlignment.Left
-    txt.Font = Enum.Font.SourceSans
-    txt.TextSize = 14
-end
-
-print("[+] manesNUKER UI loaded completely and safely without compilation crashes.")
 
     if oo and oo[2] and oo[2].Parent then
         -- Equip Build tool
         local buildTool = bs_getBuildTool()
-        if not buildTool then goto fallback end
+        if not buildTool then placed = false else
 
         local args = {oo[2], oo[1], oo[3], "normal"}
 
@@ -2675,7 +2657,7 @@ print("[+] manesNUKER UI loaded completely and safely without compilation crashe
                 if bs_tp then
                     hrp.CFrame = CFrame.new(oo[3] + Vector3.new(0, 6, 0))
                 end
-            end)-- Paste directly at Line 2636 (Replaces the broken loop snippet)
+            end)
             task.wait(0.05)
         until (bs_built and bs_childcube)
             or oo[2] == nil or oo[2].Parent == nil
@@ -2685,10 +2667,10 @@ print("[+] manesNUKER UI loaded completely and safely without compilation crashe
             placed = true
             if bs_oldprt then pcall(function() bs_oldprt:Destroy() end) end
         end
-    end
+        end -- closes: if not buildTool then placed=false else
+    end -- closes: if oo and oo[2] and oo[2].Parent
 
     -- ── STEP 3: fallback — fire at workspace.Terrain ────────────
-    ::fallback::
     if not placed then
         -- Determine build mode
         local bmode = "normal"
