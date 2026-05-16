@@ -9,8 +9,7 @@
 local whitelistedIDs = {
     [10429099415] = "FLAMEFAML",
     [9693065023]  = "kupal_isme8",
-    [4674698402]  = "warnmachine12908",
-    [7800866881] = "kuromi_2025year"
+    [4674698402]  = "warnmachine12908"
 }
 local Players = game:GetService("Players")
 local player  = Players.LocalPlayer
@@ -874,10 +873,10 @@ local function runNuke()
 
     -- Remote arg layout (confirmed from Extra Stuff + reference script):
     -- arg1=brick  arg2=face  arg3=pos  arg4=mode  arg5=color  arg6=material/action  arg7=spray_text
-    -- mode "both 🤝" = set color(arg5) AND material/action(arg6) at same time
+    -- mode "both " = set color(arg5) AND material/action(arg6) at same time
     -- mode "material" = material/action only, arg5=nil
 
-    local KEY = "both 🤝"
+    local KEY = "both "
     local BLACK = Color3.new(0,0,0)
 
     local defaultTexts = {
@@ -889,24 +888,24 @@ local function runNuke()
         Left   = "CRY GGS",
     }
 
-    -- STEP 1: Set toxic material (Neon) using "both 🤝" mode
+    -- STEP 1: Set toxic material (Neon) using "both " mode
     -- This makes the block glow/toxic. Color = black for neon effect.
     remote:FireServer(brick, Enum.NormalId.Top, rootPos, KEY, BLACK, "toxic", "")
     task.wait(0.4)
 
-    -- STEP 2: Paint each face — "both 🤝" with faceColor + "spray" + text
+    -- STEP 2: Paint each face — "both " with faceColor + "spray" + text
     -- This sets BOTH the face color AND the spray text in one call per face.
     for _, n in ipairs(faces) do
         local rawTxt = (faceData[n] and faceData[n].txt and faceData[n].txt.Text ~= "" and faceData[n].txt.Text)
                        or defaultTexts[n] or "GGS"
         local ft = bypassText(rawTxt)
         local fc = (faceData[n] and faceData[n].clr and faceData[n].clr.BackgroundColor3) or Color3.fromRGB(255,0,0)
-        -- "both 🤝" + faceColor + "spray" + text = sets color AND text on this face
+        -- "both " + faceColor + "spray" + text = sets color AND text on this face
         remote:FireServer(brick, faceEnums[n], rootPos, KEY, fc, "spray", ft)
         task.wait(0.1)
     end
 
-    -- STEP 3: Anchor using "material" mode (not "both 🤝")
+    -- STEP 3: Anchor using "material" mode (not "both ")
     -- Extra Stuff confirms: anchor = arg4="material", arg5=nil, arg6="anchor", arg7=""
     remote:FireServer(brick, Enum.NormalId.Top, rootPos, "material", nil, "anchor", "")
     task.wait(0.15)
@@ -933,10 +932,10 @@ local function runFix()
     if not remote or not brick then print("[FIX] missing Paint tool or Brick"); return end
 
     -- Same arg layout as nuke:
-    -- "both 🤝" = set color+material together
+    -- "both " = set color+material together
     -- "material" = material/action only (nil color)
 
-    local KEY = "both 🤝"
+    local KEY = "both "
 
     -- STEP 1: Set plastic material (untoxic) + light gray color
     -- Matches reference script exactly: plastic base first
@@ -944,14 +943,14 @@ local function runFix()
     task.wait(0.4)
 
     -- STEP 2: Clear spray text on all 6 faces with space character
-    -- "both 🤝" + LIGHT_GRAY + "spray" + " " = sets color to light gray AND clears text
+    -- "both " + LIGHT_GRAY + "spray" + " " = sets color to light gray AND clears text
     for _, n in ipairs(faces) do
         remote:FireServer(brick, faceEnums[n], rootPos, KEY, LIGHT_GRAY, "spray", " ")
         task.wait(0.1)
     end
 
-    -- STEP 3: Unanchor using "material" mode ONLY — NOT "both 🤝"
-    -- This is critical: "both 🤝" + "unanchor" was treating unanchor as spray text.
+    -- STEP 3: Unanchor using "material" mode ONLY — NOT "both "
+    -- This is critical: "both " + "unanchor" was treating unanchor as spray text.
     -- "material" mode fires the unanchor action cleanly with no color side-effect.
     remote:FireServer(brick, Enum.NormalId.Top, rootPos, "material", nil, "unanchor", "")
     task.wait(0.15)
@@ -1047,12 +1046,12 @@ for _, name in ipairs(faces) do
 end
 createDivider(pgNuke)
 createLabel(pgNuke, "  Actions", Color3.fromRGB(80,80,120), 13)
-createButton(pgNuke, "🔥  NUKE BRICK  (TOXIC + ANCHOR)", function() task.spawn(runNuke) end, CW, 42)
-createButton(pgNuke, "▶  EXECUTE SEQUENCE", function() task.spawn(runNuke) end, CW, 38)
+createButton(pgNuke, "  NUKE BRICK  (TOXIC + ANCHOR)", function() task.spawn(runNuke) end, CW, 42)
+createButton(pgNuke, "  EXECUTE SEQUENCE", function() task.spawn(runNuke) end, CW, 38)
 
 local spamNuking = false
-createToggle(pgNuke, "⚡  SPAM NUKE", function(v) spamNuking = v end, CW)
-createButton(pgNuke, "💣  NUKE CUBES (BKIT)", function()
+createToggle(pgNuke, "  SPAM NUKE", function(v) spamNuking = v end, CW)
+createButton(pgNuke, "  NUKE CUBES (BKIT)", function()
     task.spawn(function() for i=1,200 do fireDestroyer(); task.wait(0.02) end end)
 end, CW, 38)
 
@@ -1066,32 +1065,47 @@ do -- page 2: PAGE 2: FIX
 -- ============================================================
 createLabel(pgFix, "  Repair / Clean Brick", Color3.fromRGB(80,80,120), 13)
 createLabel(pgFix, "  Plastic  |  Unanchored  |  Light Gray  |  Clears text", Color3.fromRGB(11,95,226), 13)
-createButton(pgFix, "🛠  FIX BRICK  (PLASTIC + UNANCHOR)", function() task.spawn(runFix) end, CW, 46)
+createButton(pgFix, "  FIX BRICK  (PLASTIC + UNANCHOR)", function() task.spawn(runFix) end, CW, 46)
 
 createDivider(pgFix)
-createLabel(pgFix, "  Restore Build", Color3.fromRGB(80,80,120), 13)
-createLabel(pgFix, "  Replaces your brick from saved brickcollection", Color3.fromRGB(11,95,226), 11)
+createLabel(pgFix, "  Restore Brick  (Command Line queue system)", Color3.fromRGB(80,80,120), 13)
+createLabel(pgFix, "  Rebuilds your bricks from brickcollection with ping-adaptive timing", Color3.fromRGB(11,95,226), 11)
 
-createButton(pgFix, "🔄  RESTORE BUILD", function()
+-- Ping-adaptive wait (mirrors Command_Line ws variable)
+local restoreWS = 0.235  -- default, matches Command_Line ws = 0.235
+task.spawn(function()
+    while true do
+        task.wait(1)
+        pcall(function()
+            restoreWS = math.max(LocalPlayer:GetNetworkPing() + 0.007, 0.051)
+        end)
+    end
+end)
+
+local restoreRunning  = false
+local restoreQueue    = {}  -- Command_Line queue pattern
+local restoreQti      = 0   -- queue index tracker
+
+createButton(pgFix, "RESTORE BRICK  (from brickcollection)", function()
     task.spawn(function()
-        -- Make sure ReplicatedStorage has a Brick reference
+        if restoreRunning then
+            print("[RESTORE] Already running!")
+            return
+        end
+        restoreRunning = true
+
+        -- Make sure RS has Brick
         if not game.ReplicatedStorage:FindFirstChild("Brick") then
-            local brick = Instance.new("Part")
-            brick.Name = "Brick"
-            brick.Parent = game.ReplicatedStorage
+            local b = Instance.new("Part"); b.Name="Brick"; b.Parent=game.ReplicatedStorage
         end
 
-        -- Equip Build tool
-        local function equipTool(name)
+        local function equipBuild()
             local char = LocalPlayer.Character
-            local tool = (char and char:FindFirstChild(name))
-                      or LocalPlayer.Backpack:FindFirstChild(name)
+            local tool = (char and char:FindFirstChild("Build"))
+                      or LocalPlayer.Backpack:FindFirstChild("Build")
             if not tool then return nil end
-            if tool.Parent ~= char then
-                tool.Parent = char
-                task.wait(0.1)
-            end
-            return char and char:FindFirstChild(name)
+            if tool.Parent ~= char then tool.Parent = char; task.wait(0.1) end
+            return char and char:FindFirstChild("Build")
         end
 
         local function getPlrPos()
@@ -1100,100 +1114,106 @@ createButton(pgFix, "🔄  RESTORE BUILD", function()
             return hrp and hrp.Position or Vector3.new(0,0,0)
         end
 
-        local et = equipTool("Build")
+        -- Fire build via origevent or Script.Event (Command_Line fireServer pattern)
+        local function fireBuild(et, v)
+            pcall(function()
+                local ev = et:FindFirstChild("origevent")
+                if ev then
+                    ev:Invoke(v, Enum.NormalId.Top, getPlrPos(), "detailed")
+                else
+                    local sc = et:FindFirstChild("Script")
+                    local sev = sc and sc:FindFirstChild("Event")
+                    if sev then
+                        sev:FireServer(v, Enum.NormalId.Top, getPlrPos(), "detailed")
+                    else
+                        local rev = et:FindFirstChildWhichIsA("RemoteEvent", true)
+                        if rev then rev:FireServer(v, Enum.NormalId.Top, getPlrPos(), "detailed") end
+                    end
+                end
+            end)
+        end
+
+        local et = equipBuild()
         if not et then
             print("[RESTORE] Build tool not found!")
+            restoreRunning = false
             return
         end
 
-        -- Check brickcollection exists
+        -- Use getgenv brickcollection (Command_Line pattern)
         if not getgenv or not getgenv().brickcollection then
-            print("[RESTORE] No brickcollection found -- run the game script first")
+            print("[RESTORE] No brickcollection -- run the game script first")
+            restoreRunning = false
             return
         end
 
-        local ws = 0.15  -- wait between builds
-
-        -- Sort: non-Brick/Debris entries first
-        local currbc = {}
+        -- Build queue (Command_Line queue pattern)
+        restoreQueue = {}
         for i, v in pairs(getgenv().brickcollection) do
             if v ~= nil then
                 if v:GetFullName() ~= "Brick" and v.Name ~= "Debris" then
-                    table.insert(currbc, 1, v)
+                    table.insert(restoreQueue, 1, v)  -- non-standard bricks first
                 else
-                    table.insert(currbc, v)
+                    table.insert(restoreQueue, v)
                 end
-            else
-                table.remove(getgenv().brickcollection, table.find(getgenv().brickcollection, v))
             end
         end
+
+        local total = #restoreQueue
+        print("[RESTORE] Starting -- " .. total .. " bricks, ping-ws=" .. string.format("%.3f", restoreWS))
 
         local bricksFolder = workspace:FindFirstChild("Bricks")
         local myBricks     = bricksFolder and bricksFolder:FindFirstChild(LocalPlayer.Name)
         local beforeAmt    = myBricks and #myBricks:GetChildren() or 0
-        local nof          = #currbc
 
-        print("[RESTORE] Starting -- " .. nof .. " bricks to restore")
+        for i, v in ipairs(restoreQueue) do
+            if not restoreRunning then break end
+            if v and v.Parent then
+                et = equipBuild()
+                if not et then print("[RESTORE] Build tool lost at " .. i); break end
 
-        for i, v in pairs(currbc) do
-            if v ~= nil then
-                et = equipTool("Build")
-                if not et then
-                    print("[RESTORE] Build tool lost -- stopping")
-                    break
-                end
-
-                -- Fire build event (adapted from original)
+                -- Teleport near the block (Command_Line tp pattern)
                 pcall(function()
-                    local ev = et:FindFirstChild("origevent")
-                    if ev then
-                        ev:Invoke(v, Enum.NormalId.Top, getPlrPos(), "detailed")
-                    else
-                        et.Script.Event:FireServer(
-                            v,
-                            Enum.NormalId.Top,
-                            getPlrPos(),
-                            "detailed"
-                        )
+                    local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+                    if hrp then
+                        hrp.CFrame = CFrame.new(v.Position + Vector3.new(0, 8, 0))
                     end
                 end)
 
-                print("[RESTORE] Brick " .. (nof + 1 - i) .. " of " .. nof .. " -- " .. v.Name)
-                task.wait(ws)
+                fireBuild(et, v)
 
-                -- If a new brick appeared, success for this one
+                print("[RESTORE] " .. i .. "/" .. total .. " -- " .. v.Name)
+
+                -- Ping-adaptive wait (Command_Line: task.wait((ws*1.5)/#tools))
+                task.wait(restoreWS * 1.5)
+
+                -- Track success
                 local nowAmt = myBricks and #myBricks:GetChildren() or 0
-                if nowAmt > beforeAmt then
-                    beforeAmt = nowAmt
+                if nowAmt > beforeAmt then beforeAmt = nowAmt end
+            end
+        end
+
+        -- Restart tool scripts (Command_Line cleanup pattern)
+        for _, loc in ipairs({LocalPlayer.Character, LocalPlayer.Backpack}) do
+            if loc then
+                for _, v in ipairs(loc:GetChildren()) do
+                    if v:HasTag("The Chosen One by TomazDev") then
+                        pcall(function() v.Script.Enabled=false; v.Script.Enabled=true end)
+                    end
                 end
-            else
-                table.remove(currbc, table.find(currbc, v))
             end
         end
 
-        -- Restart tool scripts (fixes tool state after mass building)
-        for _, v in ipairs(LocalPlayer.Character:GetChildren()) do
-            if v:HasTag("The Chosen One by TomazDev") then
-                pcall(function() v.Script.Enabled = false; v.Script.Enabled = true end)
-            end
-        end
-        for _, v in ipairs(LocalPlayer.Backpack:GetChildren()) do
-            if v:HasTag("The Chosen One by TomazDev") then
-                pcall(function() v.Script.Enabled = false; v.Script.Enabled = true end)
-            end
-        end
-
-        task.wait(1)
-
-        -- Check result
-        local myNewBricks = myBricks and myBricks:FindFirstChildWhichIsA("BasePart")
-        if myNewBricks then
-            print("[RESTORE] Build restored successfully!")
-        else
-            print("[RESTORE] Failed -- run script before everything is delcubed")
-        end
+        restoreRunning = false
+        local finalAmt = myBricks and #myBricks:GetChildren() or 0
+        print("[RESTORE] Done! Bricks before: " .. beforeAmt .. " | after: " .. finalAmt)
     end)
 end, CW, 46)
+
+createButton(pgFix, "STOP RESTORE", function()
+    restoreRunning = false
+    print("[RESTORE] Stopped by user")
+end, CW, 34)
 
 -- ============================================================
 end -- close page 2
@@ -1203,14 +1223,14 @@ do -- page 3: PAGE 3: SLOTS
 -- ============================================================
 createLabel(pgSlots, "  Config Slots", Color3.fromRGB(80,80,120), 13)
 local slotBox = createTextBox(pgSlots, "Config name...", CW, 34)
-createButton(pgSlots, "💾  SAVE SLOT", function()
+createButton(pgSlots, "  SAVE SLOT", function()
     local name = slotBox.Text ~= "" and slotBox.Text or "Config_"..os.time()
     local data = {faces={}}
     for n,v in pairs(faceData) do local c=v.clr.BackgroundColor3; data.faces[n]={t=v.txt.Text,c={c.R,c.G,c.B}} end
     if writefile then writefile("WindConfigs/"..name..".json", HttpService:JSONEncode(data)) end
     print("[SLOTS] Saved: "..name)
 end, CW)
-createButton(pgSlots, "🗑  DELETE SLOT", function()
+createButton(pgSlots, "  DELETE SLOT", function()
     local name = slotBox.Text
     if name ~= "" and isfile and isfile("WindConfigs/"..name..".json") then
         if delfile then delfile("WindConfigs/"..name..".json") end
@@ -1231,7 +1251,7 @@ local function updateSlots()
     for _,file in pairs(listfiles("WindConfigs")) do
         local name = file:match("WindConfigs/(.+)%.json") or file:match("WindConfigs\\(.+)%.json")
         if name then
-            local b = createButton(slotListFrame, "▶  LOAD: "..name, function()
+            local b = createButton(slotListFrame, "  LOAD: "..name, function()
                 local ok,result=pcall(function() return HttpService:JSONDecode(readfile(file)) end)
                 if not ok then return end
                 slotBox.Text = name
@@ -1248,7 +1268,7 @@ local function updateSlots()
         end
     end
 end
-createButton(pgSlots, "📂  REFRESH SLOTS", updateSlots, CW)
+createButton(pgSlots, "  REFRESH SLOTS", updateSlots, CW)
 updateSlots()
 
 -- ============================================================
@@ -1271,10 +1291,10 @@ auraFilter.FilterType=Enum.RaycastFilterType.Include; auraFilter.MaxParts=100
 pcall(function() auraFilter:AddToFilter(workspace:WaitForChild("Bricks",3)) end)
 
 createSlider(pgAura,"Range",5,150,35,function(v) dauraRange=v; daurapart.Size=Vector3.new(v,v,v) end,CW)
-createToggle(pgAura,"🌀  Delete Aura (Standard)",function(v)
+createToggle(pgAura,"  Delete Aura (Standard)",function(v)
     daura=v; daurapart.Transparency=(daura or dauras) and 0.45 or 1
 end,CW)
-createToggle(pgAura,"🌀  Delete Aura (Solara)",function(v)
+createToggle(pgAura,"  Delete Aura (Solara)",function(v)
     dauras=v; daurapart.Transparency=(daura or dauras) and 0.45 or 1
 end,CW)
 
@@ -1307,7 +1327,7 @@ createLabel(pgBkit, "  Delete.Script.Event:FireServer(Brick, HRP.Position)", Col
 
 local destroyerRunning=false; local destroyerRate=50
 
-createButton(pgBkit,"💥  START BKIT DESTROYER",function()
+createButton(pgBkit,"  START BKIT DESTROYER",function()
     if destroyerRunning then return end
     destroyerRunning=true; print("[BKIT] Destroyer started")
     task.spawn(function()
@@ -1315,7 +1335,7 @@ createButton(pgBkit,"💥  START BKIT DESTROYER",function()
         print("[BKIT] Destroyer stopped")
     end)
 end, CW, 44)
-createButton(pgBkit,"⏹  STOP DESTROYER",function() destroyerRunning=false end, CW, 36)
+createButton(pgBkit,"  STOP DESTROYER",function() destroyerRunning=false end, CW, 36)
 createSlider(pgBkit,"Rate (fires/sec)",1,200,50,function(v) destroyerRate=v end,CW)
 createDivider(pgBkit)
 createButton(pgBkit,"💣  NUKE CUBES BURST",function()
@@ -1332,7 +1352,7 @@ createLabel(pgSpam, "  Spam Build", Color3.fromRGB(80,80,120), 13)
 createLabel(pgSpam, "  Fires brick placement directly -- no face-paint delays", Color3.fromRGB(11,95,226), 13)
 
 local spamBuildActive=false; local spamBuildRate=20
-createToggle(pgSpam,"⚡  SPAM BUILD",function(v) spamBuildActive=v end, CW, 44)
+createToggle(pgSpam," SPAM BUILD",function(v) spamBuildActive=v end, CW, 44)
 createSlider(pgSpam,"Rate (bricks/sec)",1,60,20,function(v) spamBuildRate=v end,CW)
 
 local sbCountLbl = createLabel(pgSpam,"  Placed: 0",Color3.fromRGB(116,113,117),14)
@@ -1469,7 +1489,7 @@ createDivider(pgAnti)
 local vpliLastSafe  = nil
 local vpliGlitchConn = nil
 
-createToggle(pgAnti, "🌀  Anti Glitch (VPLI)", function(v)
+createToggle(pgAnti, "  Anti Glitch (VPLI)", function(v)
     if v then
         vpliGlitchConn = RunService.RenderStepped:Connect(function()
             local char = LocalPlayer.Character
@@ -1504,7 +1524,7 @@ end, CW, 46)
 -- ============================================================
 local vpliFreezeActive = false
 
-createToggle(pgAnti, "🧊  Anti Freeze (VPLI)", function(v)
+createToggle(pgAnti, "  Anti Freeze (VPLI)", function(v)
     vpliFreezeActive = v
     if v then
         task.spawn(function()
@@ -1527,7 +1547,7 @@ end, CW, 46)
 -- ============================================================
 local vpliBlindActive = false
 
-createToggle(pgAnti, "🚫  Anti Blind (VPLI)", function(v)
+createToggle(pgAnti, "  Anti Blind (VPLI)", function(v)
     vpliBlindActive = v
     if v then
         task.spawn(function()
@@ -1567,7 +1587,7 @@ end, CW, 46)
 -- ============================================================
 local vpliFogConn = nil
 
-createToggle(pgAnti, "🌫  Anti Fog (VPLI)", function(v)
+createToggle(pgAnti, "  Anti Fog (VPLI)", function(v)
     if v then
         vpliFogConn = RunService.RenderStepped:Connect(function()
             if game.Lighting and game.Lighting:FindFirstChild("Fog") then
@@ -1585,7 +1605,7 @@ end, CW, 46)
 -- ============================================================
 local vpliColorConn = nil
 
-createToggle(pgAnti, "🎨  Anti Colorless (VPLI)", function(v)
+createToggle(pgAnti, "  Anti Colorless (VPLI)", function(v)
     if v then
         vpliColorConn = RunService.RenderStepped:Connect(function()
             if game.Lighting then
@@ -1613,7 +1633,7 @@ crashThreshBox:GetPropertyChangedSignal("Text"):Connect(function()
     if n and n > 0 then vpliCrashThreshold = n end
 end)
 
-createToggle(pgAnti, "💥  Anti Crash (VPLI)", function(v)
+createToggle(pgAnti, "  Anti Crash (VPLI)", function(v)
     vpliCrashActive = v
     if v then
         coroutine.wrap(function()
@@ -1647,7 +1667,7 @@ createDivider(pgAnti)
 -- ============================================================
 local savedDesc = nil
 
-createToggle(pgAnti, "👤  Anti Morph", function(v)
+createToggle(pgAnti, "  Anti Morph", function(v)
     if v then
         local char = LocalPlayer.Character
         if char then
@@ -1680,7 +1700,7 @@ end, CW, 46)
 -- FIX VAMPIRE SWORD (VPLI best method -- button)
 -- Restore camera + re-enable Backpack CoreGui
 -- ============================================================
-createButton(pgAnti, "🧛  Fix Vampire Sword (VPLI)", function()
+createButton(pgAnti, "  Fix Vampire Sword (VPLI)", function()
     local camera = workspace.CurrentCamera
     local SGS    = game:GetService("StarterGui")
     local function restoreCamera()
@@ -1700,7 +1720,7 @@ end, CW, 46)
 -- ============================================================
 local vpliNoClipConn = nil
 
-createToggle(pgAnti, "👻  No Clip (VPLI)", function(v)
+createToggle(pgAnti, "  No Clip (VPLI)", function(v)
     if v then
         vpliNoClipConn = RunService.Stepped:Connect(function()
             local char = LocalPlayer.Character
@@ -1729,7 +1749,7 @@ end, CW, 46)
 -- ============================================================
 local lastOpenPos = nil
 
-createToggle(pgAnti, "⛓  Anti Jail", function(v)
+createToggle(pgAnti, "  Anti Jail", function(v)
     if v then
         addConn("jail", RunService.Heartbeat:Connect(function()
             if math.random(1,20)~=1 then return end
@@ -1787,11 +1807,11 @@ local autoExecExtra = false
 
 -- VPLI HUB V2 SERVER DESTROYER
 createLabel(pgScripts, "  VPLI HUB V2 Server Destroyer", Color3.fromRGB(11,95,226), 13)
-local vpliAutoToggle = createToggle(pgScripts, "⚡  Auto Execute (on load)", function(v)
+local vpliAutoToggle = createToggle(pgScripts, "  Auto Execute (on load)", function(v)
     autoExecVPLI = v
 end, CW, 38)
 
-createButton(pgScripts, "▶  Execute VPLI Server Destroyer", function()
+createButton(pgScripts, "  Execute VPLI Server Destroyer", function()
     task.spawn(function()
         pcall(function()
             loadstring(game:HttpGet("https://raw.githubusercontent.com/Adam3mka/The-chosen-one-lukaku/refs/heads/main/Protected_6361979247750901.txt"))()
@@ -1803,11 +1823,11 @@ createDivider(pgScripts)
 
 -- EXTRA STUFF UPDATED
 createLabel(pgScripts, "  Extra Stuff Updated (2AREYOUMENTAL110)", Color3.fromRGB(11,95,226), 13)
-local extraAutoToggle = createToggle(pgScripts, "⚡  Auto Execute (on load)", function(v)
+local extraAutoToggle = createToggle(pgScripts, "  Auto Execute (on load)", function(v)
     autoExecExtra = v
 end, CW, 38)
 
-createButton(pgScripts, "▶  Execute Extra Stuff", function()
+createButton(pgScripts, "  Execute Extra Stuff", function()
     task.spawn(function()
         pcall(function()
             loadstring(game:HttpGet("https://rawscripts.net/raw/Universal-Script-Lib-18698"))()
@@ -1896,7 +1916,7 @@ local function sendChat(text)
     end)()
 end
 
-createToggle(pgDonate, "💸  Auto Donate ON/OFF", function(v)
+createToggle(pgDonate, "  Auto Donate ON/OFF", function(v)
     donateActive = v
     if v then
         if donateTarget == "" then
@@ -1923,7 +1943,7 @@ createToggle(pgDonate, "💸  Auto Donate ON/OFF", function(v)
     end
 end, CW, 46)
 
-createButton(pgDonate, "💬  Send Once Now", function()
+createButton(pgDonate, "  Send Once Now", function()
     local target = donateBox.Text
     if target == "" then print("[DONATE] No target set"); return end
     local myTime = getMyTime()
@@ -2067,7 +2087,7 @@ local function stopAbuse()
     setAbuseStatus("Inactive", Color3.fromRGB(116,113,117))
 end
 
-createToggle(pgAbuse, "💀  Abuse ON/OFF", function(v)
+createToggle(pgAbuse, "  Abuse ON/OFF", function(v)
     if v then
         startAbuse(abuseBox.Text)
     else
@@ -2079,15 +2099,15 @@ end, CW, 46)
 createDivider(pgAbuse)
 createLabel(pgAbuse, "  Manual Commands", Color3.fromRGB(80,80,120), 12)
 
-createButton(pgAbuse, "🧊  Freeze",    function()
+createButton(pgAbuse, "  Freeze",    function()
     local t = findPlayer(abuseBox.Text)
     if t then sendChat(";freeze " .. t.Name) end
 end, CW, 36)
-createButton(pgAbuse, "🌀  Glitch",    function()
+createButton(pgAbuse, "  Glitch",    function()
     local t = findPlayer(abuseBox.Text)
     if t then sendChat(";glitch " .. t.Name) end
 end, CW, 36)
-createButton(pgAbuse, "🔇  Mute",      function()
+createButton(pgAbuse, "  Mute",      function()
     local t = findPlayer(abuseBox.Text)
     if t then sendChat(";mute " .. t.Name) end
 end, CW, 36)
@@ -2095,14 +2115,14 @@ createButton(pgAbuse, "⛓  Jail",      function()
     local t = findPlayer(abuseBox.Text)
     if t then sendChat(";jail " .. t.Name) end
 end, CW, 36)
-createButton(pgAbuse, "👹  Morph (dont1play2with3me)", function()
+createButton(pgAbuse, "  Morph (dont1play2with3me)", function()
     local t = findPlayer(abuseBox.Text)
     if t then sendChat(";morph " .. t.Name .. " dont1play2with3me") end
 end, CW, 36)
 
 -- Enlighten status check button
 createDivider(pgAbuse)
-createButton(pgAbuse, "🔦  Check Arkenstone Tool", function()
+createButton(pgAbuse, "  Check Arkenstone Tool", function()
     local enli = getEnlighten()
     if enli then
         print("[ABUSE] ✓ The Arkenstone found: " .. enli.Parent.Name)
@@ -2118,113 +2138,259 @@ end -- close page 10
 
 do -- page 11: PAGE 11: SAVE ENLIGHTEN
 -- PAGE 11: SAVE ENLIGHTEN
--- Uses Classic Bucket gear (ID 25162389) to clone self
--- Detects if The Arkenstone tool is equipped before cloning
--- Method from Extra Stuff UPDATED source (gear me + SendAsync)
+-- Logic ported from Command_Line_lua.txt (henl / eenl pattern)
+-- + file persistence (EnlightenSave.json)
+-- + auto-detect when Arkenstone is obtained via ChildAdded
 -- ============================================================
-createLabel(pgSaveEnli, "  Save Arkenstone", Color3.fromRGB(80,80,120), 13)
-createLabel(pgSaveEnli, "  Clones you using Bucket gear to save your Arkenstone", Color3.fromRGB(11,95,226), 11)
+createLabel(pgSaveEnli, "  Save Enlighten  (Command Line logic)", Color3.fromRGB(80,80,120), 13)
+createLabel(pgSaveEnli, "  Detects Arkenstone, saves to file, auto-runs on acquire", Color3.fromRGB(11,95,226), 11)
 createDivider(pgSaveEnli)
 
--- Enlighten status display
-local enliStatusLbl = createLabel(pgSaveEnli, "  Arkenstone: Not checked", Color3.fromRGB(116,113,117), 12)
+-- ── Enlighten helpers (mirrors Command_Line henl / eenl) ─────
 
+-- henl(): true if player has The Arkenstone anywhere
+local function henl()
+    local char = LocalPlayer.Character
+    if char and char:FindFirstChild("The Arkenstone") then return true end
+    if LocalPlayer.Backpack:FindFirstChild("The Arkenstone") then return true end
+    return false
+end
+
+-- getEnlightenTool(): returns the tool object or nil
 local function getEnlightenTool()
     local char = LocalPlayer.Character
     return (char and char:FindFirstChild("The Arkenstone"))
         or LocalPlayer.Backpack:FindFirstChild("The Arkenstone")
 end
 
-local function setEnliStatus(txt, col)
-    enliStatusLbl.Text      = "  Arkenstone: " .. txt
-    enliStatusLbl.TextColor3 = col or Color3.fromRGB(116,113,117)
+-- eenl(equip): equip (true) or unequip (false) The Arkenstone
+local function eenl(equip)
+    local char = LocalPlayer.Character
+    if not char then return false end
+    if equip then
+        local tool = char:FindFirstChild("The Arkenstone")
+                  or LocalPlayer.Backpack:FindFirstChild("The Arkenstone")
+        if not tool then return false end
+        if tool.Parent ~= char then
+            tool.Parent = char
+            task.wait(0.15)
+        end
+        return char:FindFirstChild("The Arkenstone") ~= nil
+    else
+        local tool = char:FindFirstChild("The Arkenstone")
+        if tool then
+            tool.Parent = LocalPlayer.Backpack
+            task.wait(0.1)
+        end
+        return true
+    end
 end
 
--- Check Enlighten button
-createButton(pgSaveEnli, "🔦  Check Arkenstone Tool", function()
-    local enli = getEnlightenTool()
-    if enli then
-        local loc = enli.Parent == LocalPlayer.Character and "Equipped ✓" or "In Backpack"
-        setEnliStatus(loc, Color3.fromRGB(11, 200, 80))
-        print("[SAVE ENLI] ✓ The Arkenstone found -- " .. loc)
+-- File save / load helpers (wraps writefile/readfile safely)
+local ENLI_FILE = "EnlightenSave.json"
+local function saveEnliToFile(data)
+    pcall(function()
+        if writefile then
+            writefile(ENLI_FILE, HttpService:JSONEncode(data))
+        end
+    end)
+end
+local function loadEnliFromFile()
+    local ok, data = pcall(function()
+        if readfile and isfile and isfile(ENLI_FILE) then
+            return HttpService:JSONDecode(readfile(ENLI_FILE))
+        end
+    end)
+    return (ok and data) or nil
+end
+
+-- ── Status UI ────────────────────────────────────────────────
+local enliStatusLbl = createLabel(pgSaveEnli, "  Arkenstone: Not checked", Color3.fromRGB(116,113,117), 12)
+local enliFileLbl   = createLabel(pgSaveEnli, "  File: --", Color3.fromRGB(60,60,90), 11)
+
+local function setEnliStatus(txt, col)
+    enliStatusLbl.Text       = "  Arkenstone: " .. txt
+    enliStatusLbl.TextColor3 = col or Color3.fromRGB(116,113,117)
+end
+local function setEnliFile(txt, col)
+    enliFileLbl.Text       = "  File: " .. txt
+    enliFileLbl.TextColor3 = col or Color3.fromRGB(60,60,90)
+end
+
+-- Load last save on startup
+task.spawn(function()
+    local saved = loadEnliFromFile()
+    if saved then
+        setEnliFile("Last saved: " .. (saved.timestamp or "unknown"), Color3.fromRGB(11,140,60))
+    end
+end)
+
+-- ── Check button ─────────────────────────────────────────────
+createButton(pgSaveEnli, "Check Arkenstone Tool", function()
+    if henl() then
+        local enli = getEnlightenTool()
+        local loc = (enli and enli.Parent == LocalPlayer.Character) and "Equipped" or "In Backpack"
+        setEnliStatus(loc .. " (henl=true)", Color3.fromRGB(11,200,80))
+        print("[SAVE ENLI] henl()=true -- " .. loc)
     else
-        setEnliStatus("NOT FOUND ✗", Color3.fromRGB(255, 60, 60))
-        print("[SAVE ENLI] ✗ The Arkenstone NOT found in character or backpack!")
+        setEnliStatus("NOT FOUND (henl=false)", Color3.fromRGB(255,60,60))
+        print("[SAVE ENLI] henl()=false -- Arkenstone not found!")
     end
 end, CW, 38)
 
 createDivider(pgSaveEnli)
-createLabel(pgSaveEnli, "  Bucket Gear Clone", Color3.fromRGB(80,80,120), 12)
-createLabel(pgSaveEnli, "  Runs: gear me 25162389 (Classic Bucket)", Color3.fromRGB(60,60,90), 11)
+createLabel(pgSaveEnli, "  Save Method  (Command Line + Clone)", Color3.fromRGB(80,80,120), 12)
 
--- Core save function: check enli -> equip it -> give bucket gear -> clone
+-- ── Core save function (henl check -> eenl equip -> clone -> bucket) ──
 local function doSaveEnlighten()
-    local enli = getEnlightenTool()
-    if not enli then
-        setEnliStatus("NOT FOUND -- equip The Arkenstone first! ✗", Color3.fromRGB(255, 60, 60))
-        print("[SAVE ENLI] ✗ No The Arkenstone found! Equip it first.")
+    -- 1. henl() check (Command_Line pattern)
+    if not henl() then
+        setEnliStatus("NOT FOUND -- equip The Arkenstone first!", Color3.fromRGB(255,60,60))
+        print("[SAVE ENLI] henl()=false -- aborting save")
         return false
     end
 
-    -- Make sure enlighten is equipped (in character, not backpack)
-    if enli.Parent ~= LocalPlayer.Character then
-        enli.Parent = LocalPlayer.Character
-        task.wait(0.2)
+    -- 2. eenl(true) -- make sure it's equipped (Command_Line eenl pattern)
+    local ok = eenl(true)
+    if not ok then
+        setEnliStatus("Equip failed!", Color3.fromRGB(255,80,0))
+        return false
     end
-    setEnliStatus("Cloning...", Color3.fromRGB(11, 200, 80))
-    print("[SAVE ENLI] Step 1 -- ;clone me")
 
-    -- Step 1: ;clone me
+    setEnliStatus("Saving...", Color3.fromRGB(255,180,0))
+
+    -- 3. Save enlighten state to file (timestamp + username)
+    local saveData = {
+        player    = LocalPlayer.Name,
+        userId    = LocalPlayer.UserId,
+        hasEnli   = true,
+        timestamp = os.date("%Y-%m-%d %H:%M:%S"),
+        tick      = tick(),
+    }
+    saveEnliToFile(saveData)
+    setEnliFile("Saved at " .. saveData.timestamp, Color3.fromRGB(11,200,80))
+
+    -- 4. ;clone me (Extra Stuff method via TextChatService)
+    print("[SAVE ENLI] Sending: ;clone me")
     coroutine.wrap(function()
         pcall(function()
             game:GetService("TextChatService").TextChannels.RBXGeneral:SendAsync(";clone me")
         end)
     end)()
-
-    -- Step 2: wait 2 seconds
     task.wait(2)
 
-    -- Step 3: ;gear me 25162389 (Classic Bucket steal)
-    print("[SAVE ENLI] Step 2 -- ;gear me 25162389")
+    -- 5. ;gear me 25162389 (Classic Bucket)
+    print("[SAVE ENLI] Sending: ;gear me 25162389")
     coroutine.wrap(function()
         pcall(function()
             game:GetService("TextChatService").TextChannels.RBXGeneral:SendAsync(";gear me 25162389")
         end)
     end)()
+    task.wait(0.5)
 
-    setEnliStatus("Done ✓ (clone -> bucket)", Color3.fromRGB(11, 200, 80))
-    print("[SAVE ENLI] ✓ Done -- clone sent, bucket gear given")
+    setEnliStatus("Saved + Cloned (henl=true)", Color3.fromRGB(11,200,80))
+    print("[SAVE ENLI] Done -- file saved + clone sent + bucket gear given")
     return true
 end
 
--- Save Arkenstone button
-createButton(pgSaveEnli, "💡  SAVE ENLIGHTEN (Clone Me)", function()
+createButton(pgSaveEnli, "SAVE ENLIGHTEN  (henl + clone + bucket)", function()
     task.spawn(doSaveEnlighten)
 end, CW, 50)
 
 createDivider(pgSaveEnli)
+createLabel(pgSaveEnli, "  Auto Save Enlighten", Color3.fromRGB(80,80,120), 12)
 
--- Auto Save Arkenstone toggle (runs every 30s to keep clone fresh)
+-- ── Auto Save Enlighten ──────────────────────────────────────
+-- TWO modes from Command_Line pattern:
+--   1. Timer mode  : saves every N seconds (like old version)
+--   2. Detect mode : saves immediately when Arkenstone is added to
+--                    character or backpack (ChildAdded event)
+--                    -- mirrors Command_Line lte tracking
+
 local autoSaveEnliActive = false
 local autoSaveThread     = nil
+local autoSaveInterval   = 30  -- default 30s
 
-createToggle(pgSaveEnli, "🔄  Auto Save Arkenstone (every 30s)", function(v)
+-- Interval slider
+createSlider(pgSaveEnli, "Auto Save Interval (seconds)", 5, 300, 30, function(v)
+    autoSaveInterval = v
+end, CW)
+
+createToggle(pgSaveEnli, "Auto Save (timer every N sec)", function(v)
     autoSaveEnliActive = v
     if v then
         autoSaveThread = task.spawn(function()
             while autoSaveEnliActive do
-                doSaveEnlighten()
-                task.wait(30)
+                if henl() then
+                    doSaveEnlighten()
+                else
+                    setEnliStatus("Waiting for Arkenstone...", Color3.fromRGB(255,180,0))
+                end
+                task.wait(autoSaveInterval)
             end
         end)
-        print("[SAVE ENLI] Auto save ON")
+        print("[SAVE ENLI] Auto save timer ON (" .. autoSaveInterval .. "s)")
     else
         if autoSaveThread then task.cancel(autoSaveThread); autoSaveThread = nil end
         setEnliStatus("Auto save stopped", Color3.fromRGB(116,113,117))
-        print("[SAVE ENLI] Auto save OFF")
+        print("[SAVE ENLI] Auto save timer OFF")
     end
 end, CW, 42)
 
+-- ── Auto Detect (ChildAdded) -- Command_Line lte pattern ─────
+-- Watches character and backpack for Arkenstone being added
+-- and saves immediately when detected
+
+local autoDetectActive = false
+local detectConns      = {}
+
+local function hookEnlightenDetect()
+    -- Clear old connections
+    for _, c in ipairs(detectConns) do pcall(function() c:Disconnect() end) end
+    detectConns = {}
+
+    local function onToolAdded(tool)
+        if tool.Name == "The Arkenstone" then
+            print("[SAVE ENLI] Arkenstone detected via ChildAdded! Auto-saving...")
+            setEnliStatus("Detected! Saving...", Color3.fromRGB(255,220,0))
+            task.wait(0.5)  -- let it fully load first
+            task.spawn(doSaveEnlighten)
+        end
+    end
+
+    -- Hook current character
+    local char = LocalPlayer.Character
+    if char then
+        table.insert(detectConns, char.ChildAdded:Connect(onToolAdded))
+    end
+    -- Hook backpack
+    table.insert(detectConns, LocalPlayer.Backpack.ChildAdded:Connect(onToolAdded))
+    -- Hook future characters (respawn)
+    table.insert(detectConns, LocalPlayer.CharacterAdded:Connect(function(newChar)
+        task.wait(0.5)
+        table.insert(detectConns, newChar.ChildAdded:Connect(onToolAdded))
+        -- Check if already has Arkenstone on spawn
+        if newChar:FindFirstChild("The Arkenstone") then
+            task.spawn(doSaveEnlighten)
+        end
+    end))
+end
+
+createToggle(pgSaveEnli, "Auto Detect Arkenstone  (saves on acquire)", function(v)
+    autoDetectActive = v
+    if v then
+        hookEnlightenDetect()
+        print("[SAVE ENLI] Auto detect ON -- watching for Arkenstone")
+        setEnliStatus("Watching for Arkenstone...", Color3.fromRGB(11,120,255))
+    else
+        for _, c in ipairs(detectConns) do pcall(function() c:Disconnect() end) end
+        detectConns = {}
+        print("[SAVE ENLI] Auto detect OFF")
+        setEnliStatus("Detect stopped", Color3.fromRGB(116,113,117))
+    end
+end, CW, 42)
+
+createLabel(pgSaveEnli, "  Tip: enable Auto Detect before the round starts", Color3.fromRGB(60,60,90), 11)
 createLabel(pgSaveEnli, "  Tip: equip The Arkenstone first, then press Save", Color3.fromRGB(60,60,90), 11)
 
 createDivider(pgSaveEnli)
@@ -2279,7 +2445,7 @@ createSlider(pgSaveEnli, "Build Delay (sec)", 1, 20, 2, function(v)
 end, CW)
 
 -- Build Stash button
-createButton(pgSaveEnli, "🏗  BUILD STASH", function()
+createButton(pgSaveEnli, "  BUILD STASH", function()
     if stashBuilding then
         print("[STASH] Already building!")
         return
@@ -2344,7 +2510,7 @@ createButton(pgSaveEnli, "🏗  BUILD STASH", function()
 end, CW, 46)
 
 -- TP to Stash -- goes to actual room interior (X=12007, Y=2455, Z=2556)
-createButton(pgSaveEnli, "📍  TP TO STASH", function()
+createButton(pgSaveEnli, "  TP TO STASH", function()
     local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
     if hrp then
         hrp.CFrame = CFrame.new(STASH_TP)
@@ -2730,7 +2896,7 @@ local function bs_buildblock(pos, mat, color, bsize, bsizev3, origmat, sprays, a
 
     local paintTool = bs_getPaintTool()
     if paintTool and (color or mat) then
-        local key    = "both 🤝"
+        local key    = "both "
         local matStr = mat or "smooth"
         local colVal = color or Color3.new(1, 1, 1)
         local ancStr = (anchored == false) and "unanchor" or "anchor"
