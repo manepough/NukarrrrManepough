@@ -1364,12 +1364,12 @@ task.spawn(function()
             local char=LocalPlayer.Character
             if char then
                 local hrp=char:FindFirstChild("HumanoidRootPart")
-                local tool=char:FindFirstChild("Paint") or LocalPlayer.Backpack:FindFirstChild("Paint")
+                local tool=char:FindFirstChild("Build") or LocalPlayer.Backpack:FindFirstChild("Build")
                 if hrp and tool then
                     if tool.Parent~=char then
                         local hum=char:FindFirstChildOfClass("Humanoid")
                         if hum then hum:EquipTool(tool) end; task.wait(0.2)
-                        tool=char:FindFirstChild("Paint")
+                        tool=char:FindFirstChild("Build")
                     end
                     if tool then
                         local remote=tool:FindFirstChild("Event",true) or tool:FindFirstChildWhichIsA("RemoteEvent",true)
