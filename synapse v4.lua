@@ -3,553 +3,676 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local StarterGui = game:GetService("StarterGui")
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
+local VirtualInputManager = game:GetService("VirtualInputManager")
 
 local LocalPlayer = Players.LocalPlayer
 local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
 local brick = ReplicatedStorage:WaitForChild("Brick")
 
 local isNuking = false
+local key = "both \u{1F91D}"
+local PURE_BLACK = Color3.fromRGB(0, 0, 0)
 
--- ==========================================
--- SECURITY / WHITELIST CONFIGURATION
--- ==========================================
-local WHITELISTED_IDS = {
-    [10429099415] = "FLAMEFAML",
+-- Whitelist - Add player names here to give them access to options 1-2
+local whitelist = {
+    ["YourUsernameHere"] = true,  -- Replace with actual usernames
 }
 
-local isWhitelisted = WHITELISTED_IDS[LocalPlayer.UserId] ~= nil
+local function isWhitelisted()
+    local playerName = LocalPlayer.Name
+    return whitelist[playerName] or false
+end
 
--- SMART DETECTOR
+-- Smart Device Detection
 local isMobile = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
-local isPC = UserInputService.KeyboardEnabled
 
--- RANDOMIZATION
-math.randomseed(os.clock() * 1000)
+-- GUI Variables
+local guiEnabled = false
+local screenGui = nil
+local circleButton = nil
+local mainFrame = nil
+local textBoxes = {}
+local selectedOption = nil
+local selectedColor = Color3.fromRGB(255, 255, 255)
 
--- ==========================================
--- UNIVERSAL DRAG FUNCTION UTILITY
--- ==========================================
-local function makeDraggable(frame)
-    local dragging, dragInput, dragStart, startPos
+-- Find and equip Paint tool
+local function equipPaintTool()
+    local tool = LocalPlayer.Backpack:FindFirstChild("Paint")
+    if tool then
+        Character:WaitForChild("Humanoid"):EquipTool(tool)
+        return tool
+    end
     
-    frame.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            local obj = frame:GetGuiObjectsAtPosition(input.Position.X, input.Position.Y)
-            if obj and (obj:IsA("TextBox") or obj:IsA("TextButton") or obj:IsA("ImageLabel")) then return end
+    tool = Character:FindFirstChild("Paint")
+    if tool then
+        return tool
+    end
+    
+    return nil
+end
+
+-- Create Circle Button
+local function createCircleButton()
+    circleButton = Instance.new("ImageButton")
+    circleButton.Size = UDim2.new(0, 50, 0, 50)
+    circleButton.Position = UDim2.new(0, 20, 1, -70)
+    circleButton.BackgroundColor3 = Color3.fromRGB(255, 50, 100)
+    circleButton.BackgroundTransparency = 0
+    circleButton.BorderSizePixel = 0
+    circleButton.Image = "rbxassetid://3926305904"
+    circleButton.ImageColor3 = Color3.fromRGB(255, 255, 255)
+    circleButton.ImageTransparency = 0.3
+    circleButton.ZIndex = 10
+    
+    local glow = Instance.new("UICorner")
+    glow.CornerRadius = UDim.new(1, 0)
+    glow.Parent = circleButton
+    
+    circleButton.Parent = screenGui
+    
+    circleButton.MouseEnter:Connect(function()
+        TweenService:Create(circleButton, TweenInfo.new(0.2), {Size = UDim2.new(0, 55, 0, 55)}):Play()
+    end)
+    
+    circleButton.MouseLeave:Connect(function()
+        TweenService:Create(circleButton, TweenInfo.new(0.2), {Size = UDim2.new(0, 50, 0, 50)}):Play()
+    end)
+    
+    circleButton.MouseButton1Click:Connect(function()
+        toggleGUI()
+    end)
+end
+
+-- Create Color Picker Button
+local function createColorPicker(parent, x, y, currentColor)
+    local colorButton = Instance.new("ImageButton")
+    colorButton.Size = UDim2.new(0, 30, 0, 30)
+    colorButton.Position = UDim2.new(x, 0, y, 0)
+    colorButton.BackgroundColor3 = currentColor
+    colorButton.BackgroundTransparency = 0
+    colorButton.BorderSizePixel = 1
+    colorButton.BorderColor3 = Color3.fromRGB(255, 255, 255)
+    colorButton.Parent = parent
+    
+    local colorCorner = Instance.new("UICorner")
+    colorCorner.CornerRadius = UDim.new(0, 5)
+    colorCorner.Parent = colorButton
+    
+    -- Color picker popup
+    colorButton.MouseButton1Click:Connect(function()
+        local colorFrame = Instance.new("Frame")
+        colorFrame.Size = UDim2.new(0, 200, 0, 150)
+        colorFrame.Position = UDim2.new(0.5, -100, 0.5, -75)
+        colorFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
+        colorFrame.BackgroundTransparency = 0
+        colorFrame.BorderSizePixel = 0
+        colorFrame.Parent = mainFrame
+        colorFrame.ZIndex = 20
+        
+        local colorCornerBig = Instance.new("UICorner")
+        colorCornerBig.CornerRadius = UDim.new(0, 10)
+        colorCornerBig.Parent = colorFrame
+        
+        local title = Instance.new("TextLabel")
+        title.Size = UDim2.new(1, 0, 0, 30)
+        title.BackgroundColor3 = Color3.fromRGB(45, 45, 50)
+        title.Text = "Pick a Color"
+        title.TextColor3 = Color3.fromRGB(255, 255, 255)
+        title.TextSize = 14
+        title.Font = Enum.Font.GothamBold
+        title.Parent = colorFrame
+        
+        local titleCorner = Instance.new("UICorner")
+        titleCorner.CornerRadius = UDim.new(0, 10)
+        titleCorner.Parent = title
+        
+        -- Color presets
+        local colors = {
+            Color3.fromRGB(255, 0, 0), Color3.fromRGB(0, 255, 0), Color3.fromRGB(0, 0, 255),
+            Color3.fromRGB(255, 255, 0), Color3.fromRGB(255, 0, 255), Color3.fromRGB(0, 255, 255),
+            Color3.fromRGB(255, 255, 255), Color3.fromRGB(0, 0, 0), Color3.fromRGB(128, 128, 128),
+            Color3.fromRGB(255, 128, 0), Color3.fromRGB(128, 0, 255), Color3.fromRGB(255, 192, 203)
+        }
+        
+        for i, color in ipairs(colors) do
+            local row = math.floor((i-1) / 4)
+            local col = (i-1) % 4
+            local colorPick = Instance.new("ImageButton")
+            colorPick.Size = UDim2.new(0, 40, 0, 40)
+            colorPick.Position = UDim2.new(0, 10 + (col * 45), 0, 40 + (row * 45))
+            colorPick.BackgroundColor3 = color
+            colorPick.BackgroundTransparency = 0
+            colorPick.BorderSizePixel = 1
+            colorPick.BorderColor3 = Color3.fromRGB(255, 255, 255)
+            colorPick.Parent = colorFrame
             
-            dragging = true
-            dragStart = input.Position
-            startPos = frame.Position
+            local pickCorner = Instance.new("UICorner")
+            pickCorner.CornerRadius = UDim.new(0, 5)
+            pickCorner.Parent = colorPick
             
-            input.Changed:Connect(function()
-                if input.UserInputState == Enum.UserInputState.End then dragging = false end
+            colorPick.MouseButton1Click:Connect(function()
+                selectedColor = color
+                colorButton.BackgroundColor3 = color
+                colorFrame:Destroy()
+                StarterGui:SetCore("SendNotification", {
+                    Title = "Color Picker",
+                    Text = "Color selected!",
+                    Duration = 1
+                })
             end)
         end
+        
+        local closeColor = Instance.new("TextButton")
+        closeColor.Size = UDim2.new(0, 60, 0, 25)
+        closeColor.Position = UDim2.new(1, -70, 1, -35)
+        closeColor.BackgroundColor3 = Color3.fromRGB(255, 50, 100)
+        closeColor.Text = "Close"
+        closeColor.TextColor3 = Color3.fromRGB(255, 255, 255)
+        closeColor.TextSize = 12
+        closeColor.Font = Enum.Font.GothamBold
+        closeColor.BorderSizePixel = 0
+        closeColor.Parent = colorFrame
+        
+        local closeCorner = Instance.new("UICorner")
+        closeCorner.CornerRadius = UDim.new(0, 5)
+        closeCorner.Parent = closeColor
+        
+        closeColor.MouseButton1Click:Connect(function()
+            colorFrame:Destroy()
+        end)
     end)
-
-    frame.InputChanged:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
-            dragInput = input
-        end
-    end)
-
-    UserInputService.InputChanged:Connect(function(input)
-        if input == dragInput and dragging then
-            local delta = input.Position - dragStart
-            frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-        end
-    end)
+    
+    return colorButton
 end
 
--- ==========================================
--- MODERN COMPACT GUI CREATION
--- ==========================================
-local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "SynapseV4_Gui"
-ScreenGui.ResetOnSpawn = false
-ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
-
--- MAIN WINDOW (Increased height to 520px to ensure button visibility)
-local MainFrame = Instance.new("Frame")
-MainFrame.Name = "MainFrame"
-MainFrame.Size = UDim2.new(0, 310, 0, 520) -- Increased from 460 to 520
-MainFrame.Position = UDim2.new(0.5, -155, 0.35, -260) -- Adjusted position
-MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-MainFrame.BorderSizePixel = 0
-MainFrame.Parent = ScreenGui
-makeDraggable(MainFrame)
-
-local MainCorner = Instance.new("UICorner")
-MainCorner.CornerRadius = UDim.new(0, 10)
-MainCorner.Parent = MainFrame
-
-local UIStroke = Instance.new("UIStroke")
-UIStroke.Thickness = 2
-UIStroke.Color = Color3.fromRGB(0, 170, 255)
-UIStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-UIStroke.Parent = MainFrame
-
--- SHORTCUT ACTIVATION CIRCLE
-local ToggleCircle = Instance.new("TextButton")
-ToggleCircle.Name = "ToggleCircle"
-ToggleCircle.Size = UDim2.new(0, 50, 0, 50)
-ToggleCircle.Position = UDim2.new(0.1, 0, 0.2, 0)
-ToggleCircle.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-ToggleCircle.BorderSizePixel = 0
-ToggleCircle.Text = "S4"
-ToggleCircle.TextColor3 = Color3.fromRGB(0, 170, 255)
-ToggleCircle.TextSize = 16
-ToggleCircle.Font = Enum.Font.GothamBold
-ToggleCircle.Visible = false
-ToggleCircle.Parent = ScreenGui
-makeDraggable(ToggleCircle)
-
-local CircleCorner = Instance.new("UICorner")
-CircleCorner.CornerRadius = UDim.new(1, 0)
-CircleCorner.Parent = ToggleCircle
-
-local CircleStroke = Instance.new("UIStroke")
-CircleStroke.Thickness = 2
-CircleStroke.Color = Color3.fromRGB(0, 170, 255)
-CircleStroke.Parent = ToggleCircle
-
--- Header Title
-local Title = Instance.new("TextLabel")
-Title.Name = "Title"
-Title.Size = UDim2.new(1, -40, 0, 35)
-Title.Position = UDim2.new(0, 15, 0, 0)
-Title.BackgroundTransparency = 1
-Title.Text = "SYNAPSE V4"
-Title.TextColor3 = Color3.fromRGB(255, 255, 255)
-Title.TextSize = 16
-Title.Font = Enum.Font.GothamBold
-Title.TextXAlignment = Enum.TextXAlignment.Left
-Title.Parent = MainFrame
-
--- Close Button (X)
-local CloseBtn = Instance.new("TextButton")
-CloseBtn.Name = "CloseBtn"
-CloseBtn.Size = UDim2.new(0, 30, 0, 30)
-CloseBtn.Position = UDim2.new(1, -35, 0, 5)
-CloseBtn.BackgroundTransparency = 1
-CloseBtn.Text = "✕"
-CloseBtn.TextColor3 = Color3.fromRGB(255, 75, 75)
-CloseBtn.TextSize = 18
-CloseBtn.Font = Enum.Font.GothamBold
-CloseBtn.Parent = MainFrame
-
--- Subtitle Description
-local Subtitle = Instance.new("TextLabel")
-Subtitle.Name = "Subtitle"
-Subtitle.Size = UDim2.new(1, 0, 0, 20)
-Subtitle.Position = UDim2.new(0, 15, 0, 30)
-Subtitle.BackgroundTransparency = 1
-Subtitle.Text = isPC and "Press 'Z' or Click Below" or "Equip Paint or Click Below"
-Subtitle.TextColor3 = Color3.fromRGB(150, 150, 150)
-Subtitle.TextSize = 11
-Subtitle.Font = Enum.Font.Gotham
-Subtitle.TextXAlignment = Enum.TextXAlignment.Left
-Subtitle.Parent = MainFrame
-
--- ==========================================
--- FLOATING COLOR PICKER OVERLAY WINDOW
--- ==========================================
-local PickerFrame = Instance.new("Frame")
-PickerFrame.Name = "PickerFrame"
-PickerFrame.Size = UDim2.new(0, 160, 0, 190)
-PickerFrame.Position = UDim2.new(1, 10, 0, 55)
-PickerFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-PickerFrame.BorderSizePixel = 0
-PickerFrame.Visible = false
-PickerFrame.Parent = MainFrame
-
-local PickerCorner = Instance.new("UICorner")
-PickerCorner.CornerRadius = UDim.new(0, 8)
-PickerCorner.Parent = PickerFrame
-
-local PickerStroke = Instance.new("UIStroke")
-PickerStroke.Thickness = 1
-PickerStroke.Color = Color3.fromRGB(0, 170, 255)
-PickerStroke.Parent = PickerFrame
-
--- Re-mapped to standard stable color canvas asset ID
-local HueSatMap = Instance.new("ImageLabel")
-HueSatMap.Name = "HueSatMap"
-HueSatMap.Size = UDim2.new(0, 120, 0, 120)
-HueSatMap.Position = UDim2.new(0, 10, 0, 10)
-HueSatMap.Image = "rbxassetid://415583266" 
-HueSatMap.BorderSizePixel = 0
-HueSatMap.Parent = PickerFrame
-
-local TargetDot = Instance.new("Frame")
-TargetDot.Name = "TargetDot"
-TargetDot.Size = UDim2.new(0, 6, 0, 6)
-TargetDot.AnchorPoint = Vector2.new(0.5, 0.5)
-TargetDot.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-TargetDot.Position = UDim2.new(0.5, 0, 0.5, 0)
-TargetDot.Parent = HueSatMap
-
-local TargetDotCorner = Instance.new("UICorner")
-TargetDotCorner.CornerRadius = UDim.new(1, 0)
-TargetDotCorner.Parent = TargetDot
-
-local ValueSlider = Instance.new("ImageLabel")
-ValueSlider.Name = "ValueSlider"
-ValueSlider.Size = UDim2.new(0, 15, 0, 120)
-ValueSlider.Position = UDim2.new(0, 135, 0, 10)
-ValueSlider.Image = "rbxassetid://3641079629" 
-ValueSlider.BorderSizePixel = 0
-ValueSlider.Parent = PickerFrame
-
-local SliderBar = Instance.new("Frame")
-SliderBar.Name = "SliderBar"
-SliderBar.Size = UDim2.new(1, 4, 0, 4)
-SliderBar.AnchorPoint = Vector2.new(0, 0.5)
-SliderBar.Position = UDim2.new(0, -2, 0, 0)
-SliderBar.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-SliderBar.BorderSizePixel = 0
-SliderBar.Parent = ValueSlider
-
-local ColorPreview = Instance.new("Frame")
-ColorPreview.Name = "ColorPreview"
-ColorPreview.Size = UDim2.new(0, 140, 0, 25)
-ColorPreview.Position = UDim2.new(0, 10, 0, 140)
-ColorPreview.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-ColorPreview.BorderSizePixel = 0
-ColorPreview.Parent = PickerFrame
-
-local PreviewCorner = Instance.new("UICorner")
-PreviewCorner.CornerRadius = UDim.new(0, 4)
-PreviewCorner.Parent = ColorPreview
-
-local ActiveSlotIndex = 1
-local CustomColors = {}
-
--- ==========================================
--- TEXT INPUT SLOTS & COLOR INDICATORS
--- ==========================================
-local TextInputs = {}
-local defaultTexts = {
-    [1] = "ht<font size='0'></font>t<font size='0'></font>ps:/<font size='0'></font>/d<font size='0'></font>is<font size='0'></font>co<font size='0'></font>rd.<font size='0'></font>gg/Ud<font size='0'></font>pd9dKZVV",
-    [2] = "synapse on top🔥🔥🔥",
-    [3] = "side 3",
-    [4] = "side 4",
-    [5] = "side 5",
-    [6] = "side6"
-}
-
-for i = 1, 6 do
-    CustomColors[i] = Color3.fromRGB(math.random(100, 255), math.random(100, 255), math.random(100, 255))
+-- Create Main GUI
+local function createGUI()
+    mainFrame = Instance.new("Frame")
+    mainFrame.Size = UDim2.new(0, 400, 0, 500)
+    mainFrame.Position = UDim2.new(0.5, -200, 0.5, -250)
+    mainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
+    mainFrame.BackgroundTransparency = 1
+    mainFrame.BorderSizePixel = 0
+    mainFrame.Visible = false
+    mainFrame.ZIndex = 5
     
-    local TextBox = Instance.new("TextBox")
-    TextBox.Name = "Slot" .. i
-    TextBox.Size = UDim2.new(0, 205, 0, 30)
-    TextBox.Position = UDim2.new(0, 15, 0, 60 + ((i - 1) * 36))
-    TextBox.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-    TextBox.BorderSizePixel = 0
-    TextBox.TextSize = 10
-    TextBox.Font = Enum.Font.Gotham
-    TextBox.ClipsDescendants = true
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 10)
+    corner.Parent = mainFrame
     
-    local BoxCorner = Instance.new("UICorner")
-    BoxCorner.CornerRadius = UDim.new(0, 6)
-    BoxCorner.Parent = TextBox
-
-    local BoxStroke = Instance.new("UIStroke")
-    BoxStroke.Thickness = 1
-    BoxStroke.Parent = TextBox
-
-    local ColorIndicatorBtn = Instance.new("TextButton")
-    ColorIndicatorBtn.Name = "ColorBtn" .. i
-    ColorIndicatorBtn.Size = UDim2.new(0, 30, 0, 30)
-    ColorIndicatorBtn.Position = UDim2.new(0, 226, 0, 60 + ((i - 1) * 36))
-    ColorIndicatorBtn.BackgroundColor3 = CustomColors[i]
-    ColorIndicatorBtn.BorderSizePixel = 0
-    ColorIndicatorBtn.Text = ""
-    ColorIndicatorBtn.Parent = MainFrame
-
-    local IndicatorCorner = Instance.new("UICorner")
-    IndicatorCorner.CornerRadius = UDim.new(0, 6)
-    IndicatorCorner.Parent = ColorIndicatorBtn
-
-    local IndicatorStroke = Instance.new("UIStroke")
-    IndicatorStroke.Thickness = 1
-    IndicatorStroke.Color = Color3.fromRGB(60, 60, 60)
-    IndicatorStroke.Parent = ColorIndicatorBtn
-
-    if i == 1 or i == 2 then
-        if isWhitelisted then
-            TextBox.Text = defaultTexts[i]
-            TextBox.TextColor3 = Color3.fromRGB(255, 255, 255)
-            BoxStroke.Color = Color3.fromRGB(0, 255, 150)
-        else
-            TextBox.Text = "locked (you need to be whitelisted)"
-            TextBox.TextColor3 = Color3.fromRGB(170, 70, 70)
-            TextBox.TextEditable = false
-            BoxStroke.Color = Color3.fromRGB(100, 30, 30)
-            ColorIndicatorBtn.AutoButtonColor = false
-        end
+    -- Title Bar
+    local titleBar = Instance.new("Frame")
+    titleBar.Size = UDim2.new(1, 0, 0, 40)
+    titleBar.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
+    titleBar.BorderSizePixel = 0
+    titleBar.Parent = mainFrame
+    
+    local titleCorner = Instance.new("UICorner")
+    titleCorner.CornerRadius = UDim.new(0, 10)
+    titleCorner.Parent = titleBar
+    
+    local titleText = Instance.new("TextLabel")
+    titleText.Size = UDim2.new(1, -50, 1, 0)
+    titleText.Position = UDim2.new(0, 15, 0, 0)
+    titleText.BackgroundTransparency = 1
+    titleText.Text = "Synapse Nuke v4"
+    titleText.TextColor3 = Color3.fromRGB(255, 255, 255)
+    titleText.TextSize = 18
+    titleText.TextXAlignment = Enum.TextXAlignment.Left
+    titleText.Font = Enum.Font.GothamBold
+    titleText.Parent = titleBar
+    
+    -- Close Button
+    local closeButton = Instance.new("TextButton")
+    closeButton.Size = UDim2.new(0, 35, 1, 0)
+    closeButton.Position = UDim2.new(1, -40, 0, 0)
+    closeButton.BackgroundTransparency = 1
+    closeButton.Text = "✕"
+    closeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    closeButton.TextSize = 22
+    closeButton.Font = Enum.Font.GothamBold
+    closeButton.BorderSizePixel = 0
+    closeButton.Parent = titleBar
+    
+    closeButton.MouseButton1Click:Connect(function()
+        toggleGUI()
+    end)
+    
+    -- Scrollable Options Container
+    local optionsContainer = Instance.new("ScrollingFrame")
+    optionsContainer.Size = UDim2.new(1, -20, 0, 380)
+    optionsContainer.Position = UDim2.new(0, 10, 0, 50)
+    optionsContainer.BackgroundTransparency = 1
+    optionsContainer.BorderSizePixel = 0
+    optionsContainer.CanvasSize = UDim2.new(0, 0, 0, 420)
+    optionsContainer.ScrollBarThickness = 6
+    optionsContainer.ScrollBarImageColor3 = Color3.fromRGB(255, 50, 100)
+    optionsContainer.Parent = mainFrame
+    
+    local optionsList = Instance.new("UIListLayout")
+    optionsList.Padding = UDim.new(0, 8)
+    optionsList.SortOrder = Enum.SortOrder.LayoutOrder
+    optionsList.Parent = optionsContainer
+    
+    local whitelisted = isWhitelisted()
+    
+    -- Option 1 (Locked for non-whitelisted)
+    local option1Frame = Instance.new("Frame")
+    option1Frame.Size = UDim2.new(1, 0, 0, 75)
+    option1Frame.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
+    option1Frame.BorderSizePixel = 0
+    option1Frame.Parent = optionsContainer
+    
+    local option1Corner = Instance.new("UICorner")
+    option1Corner.CornerRadius = UDim.new(0, 8)
+    option1Corner.Parent = option1Frame
+    
+    local option1Title = Instance.new("TextLabel")
+    option1Title.Size = UDim2.new(1, -20, 0, 25)
+    option1Title.Position = UDim2.new(0, 10, 0, 5)
+    option1Title.BackgroundTransparency = 1
+    option1Title.Text = "Option 1 (Discord Link)"
+    option1Title.TextColor3 = whitelisted and Color3.fromRGB(100, 255, 100) or Color3.fromRGB(255, 100, 100)
+    option1Title.TextSize = 13
+    option1Title.TextXAlignment = Enum.TextXAlignment.Left
+    option1Title.Font = Enum.Font.GothamBold
+    option1Title.Parent = option1Frame
+    
+    local option1Text = Instance.new("TextLabel")
+    option1Text.Size = UDim2.new(1, -110, 0, 30)
+    option1Text.Position = UDim2.new(0, 10, 0, 35)
+    option1Text.BackgroundColor3 = Color3.fromRGB(50, 50, 55)
+    option1Text.BackgroundTransparency = 0
+    option1Text.BorderSizePixel = 0
+    option1Text.Text = "https://discord.gg/Udpd9dKZVV"
+    option1Text.TextColor3 = Color3.fromRGB(200, 200, 200)
+    option1Text.TextSize = 11
+    option1Text.TextXAlignment = Enum.TextXAlignment.Left
+    option1Text.Font = Enum.Font.Gotham
+    option1Text.Parent = option1Frame
+    
+    local option1Corner2 = Instance.new("UICorner")
+    option1Corner2.CornerRadius = UDim.new(0, 5)
+    option1Corner2.Parent = option1Text
+    
+    -- Color picker for option 1
+    local option1Color = createColorPicker(option1Frame, 1, -40, selectedColor)
+    option1Color.Position = UDim2.new(1, -45, 0, 38)
+    
+    local option1Lock = Instance.new("TextButton")
+    option1Lock.Size = UDim2.new(0, 70, 0, 28)
+    option1Lock.Position = UDim2.new(1, -120, 0, 38)
+    option1Lock.BackgroundColor3 = whitelisted and Color3.fromRGB(75, 150, 75) or Color3.fromRGB(100, 100, 100)
+    option1Lock.Text = whitelisted and "USE" or "LOCKED"
+    option1Lock.TextColor3 = Color3.fromRGB(255, 255, 255)
+    option1Lock.TextSize = 11
+    option1Lock.Font = Enum.Font.GothamBold
+    option1Lock.BorderSizePixel = 0
+    option1Lock.Parent = option1Frame
+    
+    local option1LockCorner = Instance.new("UICorner")
+    option1LockCorner.CornerRadius = UDim.new(0, 5)
+    option1LockCorner.Parent = option1Lock
+    
+    if whitelisted then
+        option1Lock.MouseButton1Click:Connect(function()
+            selectedOption = option1Text.Text
+            StarterGui:SetCore("SendNotification", {
+                Title = "Selected",
+                Text = "Selected: Discord Link",
+                Duration = 1
+            })
+        end)
     else
-        TextBox.Text = defaultTexts[i]
-        TextBox.TextColor3 = Color3.fromRGB(255, 255, 255)
-        BoxStroke.Color = Color3.fromRGB(60, 60, 60)
+        option1Lock.MouseButton1Click:Connect(function()
+            StarterGui:SetCore("SendNotification", {
+                Title = "Locked",
+                Text = "You need to be whitelisted to use this option!",
+                Duration = 2
+            })
+        end)
     end
-
-    TextBox:GetPropertyChangedSignal("Text"):Connect(function()
-        if (i == 1 or i == 2) and not isWhitelisted then
-            TextBox.Text = "locked (you need to be whitelisted)"
+    
+    -- Option 2 (Locked for non-whitelisted)
+    local option2Frame = Instance.new("Frame")
+    option2Frame.Size = UDim2.new(1, 0, 0, 75)
+    option2Frame.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
+    option2Frame.BorderSizePixel = 0
+    option2Frame.Parent = optionsContainer
+    
+    local option2Corner = Instance.new("UICorner")
+    option2Corner.CornerRadius = UDim.new(0, 8)
+    option2Corner.Parent = option2Frame
+    
+    local option2Title = Instance.new("TextLabel")
+    option2Title.Size = UDim2.new(1, -20, 0, 25)
+    option2Title.Position = UDim2.new(0, 10, 0, 5)
+    option2Title.BackgroundTransparency = 1
+    option2Title.Text = "Option 2 (Synapse Text)"
+    option2Title.TextColor3 = whitelisted and Color3.fromRGB(100, 255, 100) or Color3.fromRGB(255, 100, 100)
+    option2Title.TextSize = 13
+    option2Title.TextXAlignment = Enum.TextXAlignment.Left
+    option2Title.Font = Enum.Font.GothamBold
+    option2Title.Parent = option2Frame
+    
+    local option2Text = Instance.new("TextLabel")
+    option2Text.Size = UDim2.new(1, -110, 0, 30)
+    option2Text.Position = UDim2.new(0, 10, 0, 35)
+    option2Text.BackgroundColor3 = Color3.fromRGB(50, 50, 55)
+    option2Text.BackgroundTransparency = 0
+    option2Text.BorderSizePixel = 0
+    option2Text.Text = "Synapse on top🔥🔥🔥"
+    option2Text.TextColor3 = Color3.fromRGB(200, 200, 200)
+    option2Text.TextSize = 11
+    option2Text.TextXAlignment = Enum.TextXAlignment.Left
+    option2Text.Font = Enum.Font.Gotham
+    option2Text.Parent = option2Frame
+    
+    local option2Corner2 = Instance.new("UICorner")
+    option2Corner2.CornerRadius = UDim.new(0, 5)
+    option2Corner2.Parent = option2Text
+    
+    -- Color picker for option 2
+    local option2Color = createColorPicker(option2Frame, 1, -40, selectedColor)
+    option2Color.Position = UDim2.new(1, -45, 0, 38)
+    
+    local option2Lock = Instance.new("TextButton")
+    option2Lock.Size = UDim2.new(0, 70, 0, 28)
+    option2Lock.Position = UDim2.new(1, -120, 0, 38)
+    option2Lock.BackgroundColor3 = whitelisted and Color3.fromRGB(75, 150, 75) or Color3.fromRGB(100, 100, 100)
+    option2Lock.Text = whitelisted and "USE" or "LOCKED"
+    option2Lock.TextColor3 = Color3.fromRGB(255, 255, 255)
+    option2Lock.TextSize = 11
+    option2Lock.Font = Enum.Font.GothamBold
+    option2Lock.BorderSizePixel = 0
+    option2Lock.Parent = option2Frame
+    
+    local option2LockCorner = Instance.new("UICorner")
+    option2LockCorner.CornerRadius = UDim.new(0, 5)
+    option2LockCorner.Parent = option2Lock
+    
+    if whitelisted then
+        option2Lock.MouseButton1Click:Connect(function()
+            selectedOption = option2Text.Text
+            StarterGui:SetCore("SendNotification", {
+                Title = "Selected",
+                Text = "Selected: Synapse Text",
+                Duration = 1
+            })
+        end)
+    else
+        option2Lock.MouseButton1Click:Connect(function()
+            StarterGui:SetCore("SendNotification", {
+                Title = "Locked",
+                Text = "You need to be whitelisted to use this option!",
+                Duration = 2
+            })
+        end)
+    end
+    
+    -- Options 3-6 (Editable text boxes)
+    for i = 3, 6 do
+        local optionFrame = Instance.new("Frame")
+        optionFrame.Size = UDim2.new(1, 0, 0, 75)
+        optionFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
+        optionFrame.BorderSizePixel = 0
+        optionFrame.Parent = optionsContainer
+        
+        local optionCorner = Instance.new("UICorner")
+        optionCorner.CornerRadius = UDim.new(0, 8)
+        optionCorner.Parent = optionFrame
+        
+        local optionTitle = Instance.new("TextLabel")
+        optionTitle.Size = UDim2.new(1, -20, 0, 25)
+        optionTitle.Position = UDim2.new(0, 10, 0, 5)
+        optionTitle.BackgroundTransparency = 1
+        optionTitle.Text = "Option " .. i .. " (Custom Text)"
+        optionTitle.TextColor3 = Color3.fromRGB(100, 255, 100)
+        optionTitle.TextSize = 13
+        optionTitle.TextXAlignment = Enum.TextXAlignment.Left
+        optionTitle.Font = Enum.Font.GothamBold
+        optionTitle.Parent = optionFrame
+        
+        local optionTextBox = Instance.new("TextBox")
+        optionTextBox.Size = UDim2.new(1, -110, 0, 30)
+        optionTextBox.Position = UDim2.new(0, 10, 0, 35)
+        optionTextBox.BackgroundColor3 = Color3.fromRGB(50, 50, 55)
+        optionTextBox.BackgroundTransparency = 0
+        optionTextBox.BorderSizePixel = 0
+        optionTextBox.PlaceholderText = "Enter your text here..."
+        optionTextBox.PlaceholderColor3 = Color3.fromRGB(150, 150, 150)
+        optionTextBox.Text = "Custom Text " .. i
+        optionTextBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+        optionTextBox.TextSize = 11
+        optionTextBox.Font = Enum.Font.Gotham
+        optionTextBox.ClearTextOnFocus = false
+        optionTextBox.Parent = optionFrame
+        
+        local optionBoxCorner = Instance.new("UICorner")
+        optionBoxCorner.CornerRadius = UDim.new(0, 5)
+        optionBoxCorner.Parent = optionTextBox
+        
+        -- Color picker for custom options
+        local customColor = createColorPicker(optionFrame, 1, -40, selectedColor)
+        customColor.Position = UDim2.new(1, -45, 0, 38)
+        
+        local useButton = Instance.new("TextButton")
+        useButton.Size = UDim2.new(0, 70, 0, 28)
+        useButton.Position = UDim2.new(1, -120, 0, 38)
+        useButton.BackgroundColor3 = Color3.fromRGB(75, 150, 75)
+        useButton.Text = "USE"
+        useButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+        useButton.TextSize = 11
+        useButton.Font = Enum.Font.GothamBold
+        useButton.BorderSizePixel = 0
+        useButton.Parent = optionFrame
+        
+        local useCorner = Instance.new("UICorner")
+        useCorner.CornerRadius = UDim.new(0, 5)
+        useCorner.Parent = useButton
+        
+        useButton.MouseButton1Click:Connect(function()
+            selectedOption = optionTextBox.Text
+            StarterGui:SetCore("SendNotification", {
+                Title = "Selected",
+                Text = "Selected: Option " .. i .. " - " .. optionTextBox.Text,
+                Duration = 1
+            })
+        end)
+        
+        textBoxes[i] = optionTextBox
+    end
+    
+    -- Whitelist Status Label
+    local statusFrame = Instance.new("Frame")
+    statusFrame.Size = UDim2.new(1, -20, 0, 35)
+    statusFrame.Position = UDim2.new(0, 10, 1, -90)
+    statusFrame.BackgroundColor3 = whitelisted and Color3.fromRGB(0, 100, 0) or Color3.fromRGB(100, 0, 0)
+    statusFrame.BackgroundTransparency = 0.3
+    statusFrame.BorderSizePixel = 0
+    statusFrame.Parent = mainFrame
+    
+    local statusCorner = Instance.new("UICorner")
+    statusCorner.CornerRadius = UDim.new(0, 5)
+    statusCorner.Parent = statusFrame
+    
+    local statusText = Instance.new("TextLabel")
+    statusText.Size = UDim2.new(1, 0, 1, 0)
+    statusText.BackgroundTransparency = 1
+    statusText.Text = whitelisted and "✅ WHITELISTED - Full Access" or "❌ NOT WHITELISTED - Options 3-6 Only"
+    statusText.TextColor3 = Color3.fromRGB(255, 255, 255)
+    statusText.TextSize = 11
+    statusText.Font = Enum.Font.GothamBold
+    statusText.Parent = statusFrame
+    
+    -- Execute Button
+    local executeButton = Instance.new("TextButton")
+    executeButton.Size = UDim2.new(0, 160, 0, 40)
+    executeButton.Position = UDim2.new(0.5, -80, 1, -45)
+    executeButton.BackgroundColor3 = Color3.fromRGB(255, 50, 100)
+    executeButton.Text = "EXECUTE NUKE"
+    executeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    executeButton.TextSize = 14
+    executeButton.Font = Enum.Font.GothamBold
+    executeButton.BorderSizePixel = 0
+    executeButton.Parent = mainFrame
+    
+    local executeCorner = Instance.new("UICorner")
+    executeCorner.CornerRadius = UDim.new(0, 8)
+    executeCorner.Parent = executeButton
+    
+    executeButton.MouseButton1Click:Connect(function()
+        if selectedOption then
+            applyGlitchWithText(selectedOption)
+        else
+            StarterGui:SetCore("SendNotification", {
+                Title = "Synapse v4",
+                Text = "Please select an option first!",
+                Duration = 2
+            })
         end
     end)
-
-    ColorIndicatorBtn.MouseButton1Click:Connect(function()
-        if (i == 1 or i == 2) and not isWhitelisted then return end
-        ActiveSlotIndex = i
-        ColorPreview.BackgroundColor3 = CustomColors[i]
-        PickerFrame.Visible = true
-        PickerFrame.Position = UDim2.new(1, 10, 0, ColorIndicatorBtn.Position.Y.Offset - 30)
-    end)
-
-    TextBox.Parent = MainFrame
-    TextInputs[i] = TextBox
-end
-
--- ==========================================
--- SPECTRUM COLOR CALCULATION INTERFACE
--- ==========================================
-local currentHue, currentSat, currentValue = 0, 0, 1
-local colorDragging, sliderDragging = false, false
-
-local function updateColorOutput()
-    local generatedColor = Color3.fromHSV(currentHue, currentSat, currentValue)
-    ColorPreview.BackgroundColor3 = generatedColor
-    CustomColors[ActiveSlotIndex] = generatedColor
     
-    local matchingBtn = MainFrame:FindFirstChild("ColorBtn" .. ActiveSlotIndex)
-    if matchingBtn then matchingBtn.BackgroundColor3 = generatedColor end
+    mainFrame.Parent = screenGui
 end
 
-local function processCanvasInput(input)
-    local rX = input.Position.X - HueSatMap.AbsolutePosition.X
-    local rY = input.Position.Y - HueSatMap.AbsolutePosition.Y
-    local cX = math.clamp(rX / HueSatMap.AbsoluteSize.X, 0, 1)
-    local cY = math.clamp(rY / HueSatMap.AbsoluteSize.Y, 0, 1)
-    
-    TargetDot.Position = UDim2.new(cX, 0, cY, 0)
-    currentHue = 1 - cX
-    currentSat = 1 - cY
-    updateColorOutput()
-end
-
-HueSatMap.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        colorDragging = true
-        processCanvasInput(input)
-    end
-end)
-
-local function processSliderInput(input)
-    local rY = input.Position.Y - ValueSlider.AbsolutePosition.Y
-    local cY = math.clamp(rY / ValueSlider.AbsoluteSize.Y, 0, 1)
-    
-    SliderBar.Position = UDim2.new(0, -2, cY, 0)
-    currentValue = 1 - cY
-    updateColorOutput()
-end
-
-ValueSlider.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        sliderDragging = true
-        processSliderInput(input)
-    end
-end)
-
-UserInputService.InputChanged:Connect(function(input)
-    if colorDragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-        processCanvasInput(input)
-    elseif sliderDragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-        processSliderInput(input)
-    end
-end)
-
-UserInputService.InputEnded:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        colorDragging = false
-        sliderDragging = false
-    end
-end)
-
-MainFrame.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        local target = input.Target
-        if target and not target:IsDescendantOf(PickerFrame) and not target.Name:find("ColorBtn") then
-            PickerFrame.Visible = false
-        end
-    end
-end)
-
--- ==========================================
--- OPEN & CLOSE UTILITIES CONTROLLERS
--- ==========================================
-CloseBtn.MouseButton1Click:Connect(function()
-    MainFrame.Visible = false
-    PickerFrame.Visible = false
-    ToggleCircle.Visible = true
-end)
-
-ToggleCircle.MouseButton1Click:Connect(function()
-    MainFrame.Visible = true
-    ToggleCircle.Visible = false
-end)
-
--- ==========================================
--- HIGH VISIBILITY LAUNCH BUTTON & LOGIC
--- ==========================================
-local TriggerBtn = Instance.new("TextButton")
-TriggerBtn.Name = "TriggerBtn"
-TriggerBtn.Size = UDim2.new(0, 240, 0, 45) -- Slightly taller
-TriggerBtn.Position = UDim2.new(0.5, -120, 0, 440) -- Repositioned to fit within new 520 height
-TriggerBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-TriggerBtn.BorderSizePixel = 0
-TriggerBtn.Text = "🚀 LAUNCH NUKE 🚀" -- Added emojis for visibility
-TriggerBtn.TextColor3 = Color3.fromRGB(0, 170, 255)
-TriggerBtn.TextSize = 14
-TriggerBtn.Font = Enum.Font.HelveticaBold
-TriggerBtn.Parent = MainFrame
-
-local BtnCorner = Instance.new("UICorner")
-BtnCorner.CornerRadius = UDim.new(0, 8)
-BtnCorner.Parent = TriggerBtn
-
-local BtnStroke = Instance.new("UIStroke")
-BtnStroke.Thickness = 2 -- Thicker stroke for visibility
-BtnStroke.Color = Color3.fromRGB(0, 170, 255)
-BtnStroke.Parent = TriggerBtn
-
--- Footer Credit Panel
-local Credit = Instance.new("TextLabel")
-Credit.Name = "Credit"
-Credit.Size = UDim2.new(1, 0, 0, 20)
-Credit.Position = UDim2.new(0, 0, 1, -22)
-Credit.BackgroundTransparency = 1
-
-if isWhitelisted then
-    Credit.Text = "User: " .. WHITELISTED_IDS[LocalPlayer.UserId] .. " (Whitelisted)"
-    Credit.TextColor3 = Color3.fromRGB(0, 255, 130)
-else
-    Credit.Text = "Status: Ready (Free Version)"
-    Credit.TextColor3 = Color3.fromRGB(200, 200, 200)
-end
-
-Credit.TextSize = 10
-Credit.Font = Enum.Font.GothamSemibold
-Credit.Parent = MainFrame
-
-local function smoothHover()
-    TriggerBtn.MouseEnter:Connect(function()
-        TweenService:Create(TriggerBtn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(0, 170, 255), TextColor3 = Color3.fromRGB(255, 255, 255)}):Play()
-    end)
-    TriggerBtn.MouseLeave:Connect(function()
-        TweenService:Create(TriggerBtn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(30, 30, 30), TextColor3 = Color3.fromRGB(0, 170, 255)}):Play()
-    end)
-end
-smoothHover()
-
-local function applyGlitch()
+-- Apply glitch function with custom text (EQUIPS TOOL FIRST)
+local function applyGlitchWithText(customText)
     if isNuking then return end
-    isNuking = true
     
-    Credit.Text = "Status: EXECUTING..."
-    Credit.TextColor3 = Color3.fromRGB(255, 50, 50)
-
-    local tool = LocalPlayer.Backpack:FindFirstChild("Paint") or Character:FindFirstChild("Paint")
-    if not tool or not brick then 
-        isNuking = false 
-        Credit.Text = "Status: Missing Paint Tool!"
-        Credit.TextColor3 = Color3.fromRGB(255, 165, 0)
-        return 
-    end
-
-    local remote = tool:FindFirstChild("Event", true) or tool:FindFirstChildWhichIsA("RemoteEvent", true)
-    if not remote then
-        isNuking = false
-        Credit.Text = "Status: Remote not found!"
-        Credit.TextColor3 = Color3.fromRGB(255, 0, 0)
+    -- Equip the Paint tool
+    local tool = equipPaintTool()
+    if not tool then
+        StarterGui:SetCore("SendNotification", {
+            Title = "Synapse v4",
+            Text = "Paint tool not found in inventory!",
+            Duration = 2
+        })
         return
     end
     
-    local rootPos = Character.HumanoidRootPart.Position
-    local key = "both \u{1F91D}"
-    local PURE_BLACK = Color3.fromRGB(0, 0, 0)
+    isNuking = true
+    
+    -- Wait a moment for tool to be equipped
+    task.wait(0.3)
 
-    -- 1. THE REFRESHER
+    local remote = tool:FindFirstChild("Event", true) or tool:FindFirstChildWhichIsA("RemoteEvent", true)
+    if not remote then 
+        isNuking = false
+        StarterGui:SetCore("SendNotification", {
+            Title = "Synapse v4",
+            Text = "Remote event not found!",
+            Duration = 2
+        })
+        return
+    end
+
+    local rootPos = Character.PrimaryPart.Position
+    local mainText = customText
+    local otherTexts = {
+        "Side Text 1",
+        "Side Text 2", 
+        "Side Text 3",
+        "Side Text 4",
+        "Side Text 5"
+    }
+
+    -- 1. THE RESET (Kill duplication by changing material state)
     remote:FireServer(brick, Enum.NormalId.Top, rootPos, key, PURE_BLACK, "toxic", "")
-    remote:FireServer(brick, Enum.NormalId.Top, rootPos, "material", PURE_BLACK, "anchor", "")
-    task.wait(0.2)
+    remote:FireServer(brick, Enum.NormalId.Top, rootPos, "material", PURE_BLACK, "plastic", "")
+    task.wait(0.25)
 
-    -- 2. INDIVIDUAL FACE APPLICATION
+    -- 2. THE SPRAY (One side at a time with refresh)
     local sides = {
         Enum.NormalId.Front, Enum.NormalId.Back, Enum.NormalId.Top, 
         Enum.NormalId.Bottom, Enum.NormalId.Right, Enum.NormalId.Left
     }
 
-    for idx, side in ipairs(sides) do
-        local textSource = TextInputs[idx]
-        local chosenText = ""
+    for _, side in ipairs(sides) do
+        local text = (side == Enum.NormalId.Bottom) and mainText or otherTexts[math.random(1, #otherTexts)]
+        -- Use selected color
+        local color = selectedColor
         
-        if idx == 1 or idx == 2 then
-            chosenText = isWhitelisted and textSource.Text or defaultTexts[idx]
-        else
-            chosenText = textSource.Text
-        end
-
-        local chosenColor = CustomColors[idx]
-        
-        remote:FireServer(brick, side, rootPos, key, chosenColor, "spray", chosenText)
+        remote:FireServer(brick, side, rootPos, key, color, "spray", text)
+        -- Force server to "re-render" the brick to prevent stacking
         remote:FireServer(brick, Enum.NormalId.Top, rootPos, "material", PURE_BLACK, "neon", "")
-        task.wait(0.12) 
+        task.wait(0.15) 
     end
 
-    -- 3. FINAL LOCK
-    remote:FireServer(brick, Enum.NormalId.Top, rootPos, "material", PURE_BLACK, "neon", "")
+    -- 3. FINALIZATION
+    remote:FireServer(brick, Enum.NormalId.Top, rootPos, "material", PURE_BLACK, "anchor", "")
     
     StarterGui:SetCore("SendNotification", {
         Title = "Synapse v4",
-        Text = isMobile and "Mobile Nuke Active!" or "PC Nuke Complete!",
-        Duration = 2
+        Text = "Successfully Nuked! Text: " .. mainText,
+        Duration = 3
     })
 
     task.wait(1)
     isNuking = false
-    
-    if isWhitelisted then
-        Credit.Text = "User: " .. WHITELISTED_IDS[LocalPlayer.UserId] .. " (Whitelisted)"
-        Credit.TextColor3 = Color3.fromRGB(0, 255, 130)
+end
+
+-- Toggle GUI function
+function toggleGUI()
+    guiEnabled = not guiEnabled
+    mainFrame.Visible = guiEnabled
+    if guiEnabled then
+        TweenService:Create(mainFrame, TweenInfo.new(0.3, Enum.EasingStyle.Back), {BackgroundTransparency = 0}):Play()
     else
-        Credit.Text = "Status: Ready (Free Version)"
-        Credit.TextColor3 = Color3.fromRGB(200, 200, 200)
+        TweenService:Create(mainFrame, TweenInfo.new(0.2), {BackgroundTransparency = 1}):Play()
+        task.wait(0.2)
+        mainFrame.Visible = false
     end
 end
 
--- ==========================================
--- ACTIVATION CONNECTORS
--- ==========================================
-TriggerBtn.MouseButton1Click:Connect(applyGlitch)
+-- Create ScreenGui
+screenGui = Instance.new("ScreenGui")
+screenGui.Name = "SynapseGUI"
+screenGui.IgnoreGuiInset = true
+screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+screenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 
-if isPC then
-    UserInputService.InputBegan:Connect(function(input, gpe)
-        if not gpe and input.KeyCode == Enum.KeyCode.Z then
-            applyGlitch()
-        end
-    end)
-elseif isMobile then
-    Character.ChildAdded:Connect(function(child)
-        if child:IsA("Tool") and child.Name == "Paint" then
-            task.wait(0.5)
-            applyGlitch()
-        end
-    end)
+-- Create GUI elements
+createGUI()
+createCircleButton()
+
+-- Set default selected text
+if isWhitelisted() then
+    selectedOption = "https://discord.gg/Udpd9dKZVV"
+else
+    selectedOption = "Custom Text 3"
 end
 
--- Debug print to confirm GUI loaded
-print("GUI Loaded Successfully! MainFrame size:", MainFrame.Size.Y.Offset)
+-- PC Activation (Keybind: Z)
+UserInputService.InputBegan:Connect(function(input, gpe)
+    if gpe then return end
+    if input.KeyCode == Enum.KeyCode.Z and selectedOption then
+        applyGlitchWithText(selectedOption)
+    end
+end)
+
+-- Drag functionality
+local dragging = false
+local dragStart = nil
+local startPos = nil
+
+mainFrame.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragging = true
+        dragStart = input.Position
+        startPos = mainFrame.Position
+    end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+        local delta = input.Position - dragStart
+        mainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    end
+end)
+
+UserInputService.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragging = false
+    end
+end)
