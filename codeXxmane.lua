@@ -1050,7 +1050,7 @@ createButton(pgNuke, "  NUKE BRICK  (TOXIC + ANCHOR)", function() task.spawn(run
 createButton(pgNuke, "  EXECUTE SEQUENCE", function() task.spawn(runNuke) end, CW, 38)
 
 local spamNuking = false
-createToggle(pgNuke, "  SPAM NUKE", function(v) spamNuking = v end, CW)
+createToggle(pgNuke, "   SPAM NUKE", function(v) spamNuking = v end, CW)
 createButton(pgNuke, "  NUKE CUBES (BKIT)", function()
     task.spawn(function() for i=1,200 do fireDestroyer(); task.wait(0.02) end end)
 end, CW, 38)
@@ -1230,7 +1230,7 @@ createButton(pgSlots, "  SAVE SLOT", function()
     if writefile then writefile("WindConfigs/"..name..".json", HttpService:JSONEncode(data)) end
     print("[SLOTS] Saved: "..name)
 end, CW)
-createButton(pgSlots, "  DELETE SLOT", function()
+createButton(pgSlots, "🗑  DELETE SLOT", function()
     local name = slotBox.Text
     if name ~= "" and isfile and isfile("WindConfigs/"..name..".json") then
         if delfile then delfile("WindConfigs/"..name..".json") end
@@ -1352,7 +1352,7 @@ createLabel(pgSpam, "  Spam Build", Color3.fromRGB(80,80,120), 13)
 createLabel(pgSpam, "  Fires brick placement directly -- no face-paint delays", Color3.fromRGB(11,95,226), 13)
 
 local spamBuildActive=false; local spamBuildRate=20
-createToggle(pgSpam," SPAM BUILD",function(v) spamBuildActive=v end, CW, 44)
+createToggle(pgSpam,"  SPAM BUILD",function(v) spamBuildActive=v end, CW, 44)
 createSlider(pgSpam,"Rate (bricks/sec)",1,60,20,function(v) spamBuildRate=v end,CW)
 
 local sbCountLbl = createLabel(pgSpam,"  Placed: 0",Color3.fromRGB(116,113,117),14)
@@ -1364,12 +1364,12 @@ task.spawn(function()
             local char=LocalPlayer.Character
             if char then
                 local hrp=char:FindFirstChild("HumanoidRootPart")
-                local tool=char:FindFirstChild("Build") or LocalPlayer.Backpack:FindFirstChild("Build")
+                local tool=char:FindFirstChild("Paint") or LocalPlayer.Backpack:FindFirstChild("Paint")
                 if hrp and tool then
                     if tool.Parent~=char then
                         local hum=char:FindFirstChildOfClass("Humanoid")
                         if hum then hum:EquipTool(tool) end; task.wait(0.2)
-                        tool=char:FindFirstChild("Build")
+                        tool=char:FindFirstChild("Paint")
                     end
                     if tool then
                         local remote=tool:FindFirstChild("Event",true) or tool:FindFirstChildWhichIsA("RemoteEvent",true)
@@ -1749,7 +1749,7 @@ end, CW, 46)
 -- ============================================================
 local lastOpenPos = nil
 
-createToggle(pgAnti, "  Anti Jail", function(v)
+createToggle(pgAnti, "⛓  Anti Jail", function(v)
     if v then
         addConn("jail", RunService.Heartbeat:Connect(function()
             if math.random(1,20)~=1 then return end
@@ -2445,7 +2445,7 @@ createSlider(pgSaveEnli, "Build Delay (sec)", 1, 20, 2, function(v)
 end, CW)
 
 -- Build Stash button
-createButton(pgSaveEnli, "  BUILD STASH", function()
+createButton(pgSaveEnli, "🏗  BUILD STASH", function()
     if stashBuilding then
         print("[STASH] Already building!")
         return
@@ -2520,127 +2520,6 @@ createButton(pgSaveEnli, "  TP TO STASH", function()
         print("[STASH] No character found")
     end
 end, CW, 42)
-
-createLabel(pgSaveEnli, " Enlighten Stash v2", Color3.fromRGB(80, 80, 120), 13)
-
--- Input Box for how many clones to stash
-local stashInput = createTextBox(pgSaveEnli, " Stash Amount (Number of Clones)", CW, 36)
-
--- Main Toggle variable
-local stashActive = false
-local stopstash = false
-
--- The modular stash logic function
-local function runStashAutomation(stashamt)
-    if not henl() then
-        sayto(localplr, "You need enlighten to make a stash!")
-        stashActive = false
-        return
-    end
-
-    getgenv().antiglitch = false
-    getgenv().antifling = false
-    task.wait(0.5)
-    novel = true
-
-    local lhrp = gcp("hrp")
-    if not lhrp then stashActive = false; return end
-
-    local op = lhrp.CFrame
-    local c = lhrp.Parent
-    c:PivotTo(CFrame.new(getgenv().stashposition + Vector3.new(0, 30, 0)))
-
-    if not localplr:HasTag("Muted") then
-        task.wait(0.5)
-        sayto(nil, ";mute me")
-    end
-    task.wait(0.5)
-
-    for i = 1, stashamt do
-        if stopstash or not stashActive then break end
-
-        local cloneamt = #workspace.Clones[localplr.Name]:GetChildren()
-        local fullstashamt = math.floor(cloneamt)
-        local x = (fullstashamt % 4) * 10
-        local y = math.floor(fullstashamt / 4) * 10
-
-        c:PivotTo(CFrame.new(getgenv().stashposition + Vector3.new(x, 0, y)))
-        task.wait(0.5)
-        
-        check()
-        if stopstash or not stashActive then break end
-
-        eenl(false, true)
-        if not eb() then
-            sayto(nil, ";gear me 25162389")
-            task.wait(0.5)
-            eb()
-            eenl(false, true)
-        end
-
-        check()
-        if stopstash or not stashActive then break end
-
-        sayto(nil, ";freeze me")
-        task.wait(0.5)
-        
-        check()
-        if stopstash or not stashActive then break end
-
-        sayto(nil, ";clone me")
-        task.wait(0.5)
-        
-        check()
-        if stopstash or not stashActive then break end
-
-        sayto(nil, ";unfreeze me")
-        c:PivotTo(CFrame.new(getgenv().stashposition + Vector3.new(x, 15, y)))
-
-        -- Clean wait safety loop
-        for delayTick = 1, 10 do
-            task.wait(1)
-            check()
-            if stopstash or not stashActive then break end
-        end
-    end
-
-    task.wait(0.5)
-    sayto(nil, ";unmute me")
-
-    if gcp("hum") then
-        task.wait(0.5)
-        gcp("hum"):UnequipTools()
-        task.wait(0.5)
-        teleportto(op)
-    end
-
-    novel = false
-
-    if stopstash then
-        coroutine.wrap(function()
-            task.wait(3)
-            stopstash = false
-        end)()
-    end
-    stashActive = false
-end
-
--- UI Toggle Button to start and stop the stash process
-createToggle(pgSaveEnli, "Auto Stash Clones", function(state)
-    stashActive = state
-    if state then
-        stopstash = false
-        local amount = tonumber(stashInput.Text) or 1
-        task.spawn(function()
-            runStashAutomation(amount)
-        end)
-    else
-        stopstash = true
-    end
-end)
-
-end -- end of page 11 block
-  
 
 
 -- ============================================================
