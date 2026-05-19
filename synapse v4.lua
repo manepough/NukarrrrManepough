@@ -419,10 +419,11 @@ for _, opt in ipairs(ColorOptions) do
     end)
 end
 
-------------------------------------------------------------------------
+-----------------------------------------------------------------------
 -- Close popup when clicking outside
-------------------------------------------------------------------------
-ScreenGui.InputBegan:Connect(function(input)
+-----------------------------------------------------------------------
+
+UserInputService.InputBegan:Connect(function(input, gpe)
     if not PickerPopup.Visible then return end
     if input.UserInputType ~= Enum.UserInputType.MouseButton1
     and input.UserInputType ~= Enum.UserInputType.Touch then return end
