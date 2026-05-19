@@ -28,15 +28,15 @@ for _, name in ipairs(Whitelist) do
 end
 
 ------------------------------------------------------------------------
--- Side Enums
+-- Side Enums (index matches row number)
 ------------------------------------------------------------------------
 local SideEnums = {
-    Enum.NormalId.Top,
-    Enum.NormalId.Bottom,
-    Enum.NormalId.Front,
-    Enum.NormalId.Back,
-    Enum.NormalId.Right,
-    Enum.NormalId.Left,
+    [1] = Enum.NormalId.Top,
+    [2] = Enum.NormalId.Bottom,
+    [3] = Enum.NormalId.Front,
+    [4] = Enum.NormalId.Back,
+    [5] = Enum.NormalId.Right,
+    [6] = Enum.NormalId.Left,
 }
 
 ------------------------------------------------------------------------
@@ -79,8 +79,8 @@ local ColorOptions = {
 local rowData = {}
 for i = 1, 6 do
     rowData[i] = {
-        text  = DefaultSideTexts[i],
-        color = ColorOptions[1].Value,
+        text      = DefaultSideTexts[i],
+        color     = ColorOptions[1].Value,
         colorName = ColorOptions[1].Name,
     }
 end
@@ -117,12 +117,11 @@ circleStroke.Thickness = 2
 -- Main Frame
 ------------------------------------------------------------------------
 local FRAME_W = 400
-local FRAME_H = 500
 
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
-MainFrame.Size = UDim2.new(0, FRAME_W, 0, FRAME_H)
-MainFrame.Position = UDim2.new(0.5, -FRAME_W / 2, 0.5, -FRAME_H / 2)
+MainFrame.Size = UDim2.new(0, FRAME_W, 0, 100)
+MainFrame.Position = UDim2.new(0.5, -FRAME_W / 2, 0.5, -250)
 MainFrame.BackgroundColor3 = Color3.fromRGB(11, 11, 19)
 MainFrame.BorderSizePixel = 0
 MainFrame.Visible = false
@@ -174,7 +173,7 @@ CloseButton.ZIndex = 4
 Instance.new("UICorner", CloseButton).CornerRadius = UDim.new(0, 6)
 
 ------------------------------------------------------------------------
--- Status label
+-- Status Label
 ------------------------------------------------------------------------
 local StatusLabel = Instance.new("TextLabel", MainFrame)
 StatusLabel.Size = UDim2.new(1, -28, 0, 18)
@@ -204,9 +203,9 @@ end
 makeDivider(72)
 
 ------------------------------------------------------------------------
--- Color Picker Popup (shared, one at a time)
+-- Picker Popup (shared)
 ------------------------------------------------------------------------
-local activePickerRow = nil  -- which row index is open
+local activePickerRow = nil
 
 local PickerPopup = Instance.new("Frame", ScreenGui)
 PickerPopup.Name = "PickerPopup"
@@ -240,41 +239,34 @@ local popupPad = Instance.new("UIPadding", PopupScroll)
 popupPad.PaddingTop = UDim.new(0, 5)
 popupPad.PaddingBottom = UDim.new(0, 5)
 
--- We will fill the popup buttons after building the rows
--- so the callback can reference colorSwatches table
-
-------------------------------------------------------------------------
--- Row builder
-------------------------------------------------------------------------
-local ROW_START_Y = 82
-local ROW_H       = 44
-local ROW_GAP     = 6
-
--- Header
-local headerLabel = Instance.new("TextLabel", MainFrame)
-headerLabel.Size = UDim2.new(1, -28, 0, 16)
-headerLabel.Position = UDim2.new(0, 14, 0, ROW_START_Y)
-headerLabel.BackgroundTransparency = 1
-headerLabel.Text = "Side"
-headerLabel.TextColor3 = Color3.fromRGB(120, 130, 180)
-headerLabel.TextSize = 11
-headerLabel.Font = Enum.Font.GothamSemibold
-headerLabel.TextXAlignment = Enum.TextXAlignment.Left
-
--- Each row:  [num]  [textbox ...............]  [color swatch]
--- Widths:     26     remaining                   28
-local NUM_W    = 26
-local SWATCH_W = 28
-local PAD      = 14
-local SPACING  = 6
-local BOX_W    = FRAME_W - PAD * 2 - NUM_W - SWATCH_W - SPACING * 2
-
-local colorSwatches = {}  -- [rowIndex] = swatch TextButton
-
 local function closePopup()
     PickerPopup.Visible = false
     activePickerRow = nil
 end
+
+------------------------------------------------------------------------
+-- Build rows
+------------------------------------------------------------------------
+local ROW_START_Y = 82
+local ROW_H       = 44
+local ROW_GAP     = 6
+local PAD         = 14
+local NUM_W       = 26
+local SWATCH_W    = 28
+local SPACING     = 6
+local BOX_W       = FRAME_W - PAD * 2 - NUM_W - SWATCH_W - SPACING * 2
+
+local colorSwatches = {}
+
+local headerLabel = Instance.new("TextLabel", MainFrame)
+headerLabel.Size = UDim2.new(1, -28, 0, 16)
+headerLabel.Position = UDim2.new(0, PAD, 0, ROW_START_Y)
+headerLabel.BackgroundTransparency = 1
+headerLabel.Text = "Side Texts"
+headerLabel.TextColor3 = Color3.fromRGB(120, 130, 180)
+headerLabel.TextSize = 11
+headerLabel.Font = Enum.Font.GothamSemibold
+headerLabel.TextXAlignment = Enum.TextXAlignment.Left
 
 for i = 1, 6 do
     local locked = (i == 1 or i == 2) and not isWhitelisted
@@ -311,7 +303,7 @@ for i = 1, 6 do
         and Color3.fromRGB(60, 60, 90)
         or  Color3.fromRGB(210, 220, 255)
     box.PlaceholderColor3 = locked
-        and Color3.fromRGB(80, 55, 55)
+        and Color3.fromRGB(100, 60, 60)
         or  Color3.fromRGB(75, 85, 130)
     box.TextSize = 12
     box.Font = Enum.Font.Gotham
@@ -334,7 +326,7 @@ for i = 1, 6 do
         end)
     end
 
-    -- Color swatch button
+    -- Swatch
     local swatch = Instance.new("TextButton", MainFrame)
     swatch.Name = "Swatch" .. i
     swatch.Size = UDim2.new(0, SWATCH_W, 0, SWATCH_W)
@@ -355,54 +347,43 @@ for i = 1, 6 do
 
     colorSwatches[i] = swatch
 
-    -- Toggle popup on swatch click
     local rowIndex = i
     swatch.MouseButton1Click:Connect(function()
         if activePickerRow == rowIndex then
             closePopup()
             return
         end
-
         activePickerRow = rowIndex
 
-        -- Position popup just below the swatch in screen space
-        local swatchPos = swatch.AbsolutePosition
-        local swatchSize = swatch.AbsoluteSize
-        local popW = 220
-        local popH = 200
-
-        local px = swatchPos.X + swatchSize.X + 6
-        local py = swatchPos.Y
-
-        -- Keep inside screen
+        local sp = swatch.AbsolutePosition
+        local ss = swatch.AbsoluteSize
+        local popW, popH = 220, 200
+        local px = sp.X + ss.X + 6
+        local py = sp.Y
         local vp = ScreenGui.AbsoluteSize
-        if px + popW > vp.X then px = swatchPos.X - popW - 6 end
+        if px + popW > vp.X then px = sp.X - popW - 6 end
         if py + popH > vp.Y then py = vp.Y - popH - 6 end
 
         PickerPopup.Position = UDim2.new(0, px, 0, py)
         PickerPopup.Visible = true
-        TweenService:Create(PickerPopup, TweenInfo.new(0.15, Enum.EasingStyle.Quad), {
-            Size = UDim2.new(0, popW, 0, popH)
-        }):Play()
     end)
 end
 
 ------------------------------------------------------------------------
--- Populate popup color buttons
+-- Populate picker colors
 ------------------------------------------------------------------------
 for _, opt in ipairs(ColorOptions) do
     local cb = Instance.new("TextButton", PopupScroll)
     cb.BackgroundColor3 = opt.Value
     cb.BorderSizePixel = 0
     cb.Text = opt.Name
-    local darkColor = opt.Name == "Black" or opt.Name == "Navy"
+    local darkText = opt.Name == "Black" or opt.Name == "Navy"
         or opt.Name == "Dark Green" or opt.Name == "Purple" or opt.Name == "Brown"
-    cb.TextColor3 = darkColor and Color3.fromRGB(220, 220, 220) or Color3.fromRGB(0, 0, 0)
+    cb.TextColor3 = darkText and Color3.fromRGB(220, 220, 220) or Color3.fromRGB(0, 0, 0)
     cb.TextSize = 10
     cb.Font = Enum.Font.GothamBold
     cb.ZIndex = 21
     Instance.new("UICorner", cb).CornerRadius = UDim.new(0, 6)
-
     local cbStroke = Instance.new("UIStroke", cb)
     cbStroke.Thickness = 1
     cbStroke.Color = Color3.fromRGB(50, 50, 70)
@@ -419,10 +400,9 @@ for _, opt in ipairs(ColorOptions) do
     end)
 end
 
------------------------------------------------------------------------
--- Close popup when clicking outside
------------------------------------------------------------------------
-
+------------------------------------------------------------------------
+-- Close popup on outside click  (FIXED: UserInputService not ScreenGui)
+------------------------------------------------------------------------
 UserInputService.InputBegan:Connect(function(input, gpe)
     if not PickerPopup.Visible then return end
     if input.UserInputType ~= Enum.UserInputType.MouseButton1
@@ -452,10 +432,9 @@ UserInputService.InputBegan:Connect(function(input, gpe)
 end)
 
 ------------------------------------------------------------------------
--- Divider + Execute button
+-- Execute Button
 ------------------------------------------------------------------------
 local ROWS_BOTTOM = ROW_START_Y + 20 + 6 * (ROW_H + ROW_GAP) + 4
-
 makeDivider(ROWS_BOTTOM)
 
 local ExecuteButton = Instance.new("TextButton", MainFrame)
@@ -472,28 +451,22 @@ local execStroke = Instance.new("UIStroke", ExecuteButton)
 execStroke.Color = Color3.fromRGB(100, 140, 255)
 execStroke.Thickness = 1.5
 
--- Resize frame to fit content
-MainFrame.Size = UDim2.new(0, FRAME_W, 0, ROWS_BOTTOM + 10 + 44 + 14)
+-- Resize frame to fit everything
+local FINAL_H = ROWS_BOTTOM + 10 + 44 + 14
+MainFrame.Size = UDim2.new(0, FRAME_W, 0, FINAL_H)
+MainFrame.Position = UDim2.new(0.5, -FRAME_W / 2, 0.5, -FINAL_H / 2)
 
 ExecuteButton.MouseEnter:Connect(function()
-    TweenService:Create(ExecuteButton, TweenInfo.new(0.14), {
-        BackgroundColor3 = Color3.fromRGB(68, 108, 240)
-    }):Play()
+    TweenService:Create(ExecuteButton, TweenInfo.new(0.14), {BackgroundColor3 = Color3.fromRGB(68, 108, 240)}):Play()
 end)
 ExecuteButton.MouseLeave:Connect(function()
-    TweenService:Create(ExecuteButton, TweenInfo.new(0.14), {
-        BackgroundColor3 = Color3.fromRGB(48, 88, 210)
-    }):Play()
+    TweenService:Create(ExecuteButton, TweenInfo.new(0.14), {BackgroundColor3 = Color3.fromRGB(48, 88, 210)}):Play()
 end)
 CloseButton.MouseEnter:Connect(function()
-    TweenService:Create(CloseButton, TweenInfo.new(0.14), {
-        BackgroundColor3 = Color3.fromRGB(230, 55, 55)
-    }):Play()
+    TweenService:Create(CloseButton, TweenInfo.new(0.14), {BackgroundColor3 = Color3.fromRGB(230, 55, 55)}):Play()
 end)
 CloseButton.MouseLeave:Connect(function()
-    TweenService:Create(CloseButton, TweenInfo.new(0.14), {
-        BackgroundColor3 = Color3.fromRGB(190, 45, 45)
-    }):Play()
+    TweenService:Create(CloseButton, TweenInfo.new(0.14), {BackgroundColor3 = Color3.fromRGB(190, 45, 45)}):Play()
 end)
 
 ------------------------------------------------------------------------
@@ -523,7 +496,6 @@ UserInputService.InputChanged:Connect(function(input)
     if not dragging then return end
     if input.UserInputType ~= Enum.UserInputType.MouseMovement
     and input.UserInputType ~= Enum.UserInputType.Touch then return end
-
     local delta = input.Position - dragStart
     TweenService:Create(MainFrame, TweenInfo.new(0.06, Enum.EasingStyle.Linear), {
         Position = UDim2.new(
@@ -536,16 +508,13 @@ end)
 ------------------------------------------------------------------------
 -- Open / Close
 ------------------------------------------------------------------------
-local FW = FRAME_W
-local FH = MainFrame.Size.Y.Offset
-
 local function openGUI()
     MainFrame.Visible = true
     MainFrame.Size = UDim2.new(0, 0, 0, 0)
     MainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
     TweenService:Create(MainFrame, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-        Size = UDim2.new(0, FW, 0, FH),
-        Position = UDim2.new(0.5, -FW / 2, 0.5, -FH / 2),
+        Size = UDim2.new(0, FRAME_W, 0, FINAL_H),
+        Position = UDim2.new(0.5, -FRAME_W / 2, 0.5, -FINAL_H / 2),
     }):Play()
 end
 
@@ -565,52 +534,73 @@ end)
 CloseButton.MouseButton1Click:Connect(closeGUI)
 
 ------------------------------------------------------------------------
--- Core nuke logic
+-- Nuke Logic (FIXED)
 ------------------------------------------------------------------------
 local function applyNuke()
     local Character = LocalPlayer.Character
     if not Character or isNuking then return end
 
     local tool = Character:FindFirstChild("Paint") or LocalPlayer.Backpack:FindFirstChild("Paint")
-    if not tool then return end
+    if not tool then
+        StarterGui:SetCore("SendNotification", {Title = "Synapse", Text = "Paint tool not found.", Duration = 3})
+        return
+    end
 
     isNuking = true
 
+    -- Equip if needed
     if tool.Parent ~= Character then
         Character:WaitForChild("Humanoid"):EquipTool(tool)
-        task.wait(0.5)
+        task.wait(0.6)
     end
 
     local remote = tool:FindFirstChild("Event", true)
         or tool:FindFirstChildWhichIsA("RemoteEvent", true)
-    if not remote then isNuking = false return end
-    if not Character.PrimaryPart then isNuking = false return end
+    if not remote then
+        isNuking = false
+        StarterGui:SetCore("SendNotification", {Title = "Synapse", Text = "RemoteEvent not found.", Duration = 3})
+        return
+    end
+
+    if not Character.PrimaryPart then
+        isNuking = false
+        return
+    end
 
     local rootPos = Character.PrimaryPart.Position
 
-    -- Anchor + clean
-    remote:FireServer(brick, Enum.NormalId.Top, rootPos, "material", PURE_BLACK, "anchor", "")
-    task.wait(0.1)
-    remote:FireServer(brick, Enum.NormalId.Top, rootPos, key, PURE_BLACK, "toxic", "")
-    task.wait(0.6)
+    -- Step 1: unanchor the brick so it can be modified
+    remote:FireServer(brick, Enum.NormalId.Top, rootPos, "material", PURE_BLACK, "unanchor", "")
+    task.wait(0.15)
 
-    -- Paint each side with its own text and color
+    -- Step 2: clear all faces first
+    for _, sideEnum in pairs(SideEnums) do
+        remote:FireServer(brick, sideEnum, rootPos, key, PURE_BLACK, "spray", "")
+        task.wait(0.1)
+    end
+
+    task.wait(0.3)
+
+    -- Step 3: paint each face with its own color and text
     for i = 1, 6 do
         local data = rowData[i]
         local sideEnum = SideEnums[i]
-        local textToSend = data.text ~= "" and data.text or ("side " .. i)
+        local textToSend = (data.text ~= nil and data.text ~= "")
+            and data.text
+            or ("side " .. i)
 
         remote:FireServer(brick, sideEnum, rootPos, key, data.color, "spray", textToSend)
-        remote:FireServer(brick, Enum.NormalId.Top, rootPos, "material", PURE_BLACK, "neon", "")
         task.wait(0.45)
+        remote:FireServer(brick, sideEnum, rootPos, "material", data.color, "neon", "")
+        task.wait(0.1)
     end
 
-    -- Final sync
+    -- Step 4: anchor after painting
     remote:FireServer(brick, Enum.NormalId.Top, rootPos, "material", PURE_BLACK, "anchor", "")
 
     StarterGui:SetCore("SendNotification", {
         Title = "Synapse",
-        Text = "Executed all 6 sides",
+        Text = "All 6 sides painted successfully.",
         Duration = 3,
     })
 
@@ -644,12 +634,12 @@ if LocalPlayer.Character then setupMobile(LocalPlayer.Character) end
 LocalPlayer.CharacterAdded:Connect(setupMobile)
 
 ------------------------------------------------------------------------
--- Startup notification
+-- Startup
 ------------------------------------------------------------------------
 StarterGui:SetCore("SendNotification", {
     Title = "Synapse",
     Text = isWhitelisted
-        and "Full access loaded. All 6 sides unlocked."
+        and "Full access. All 6 sides unlocked."
         or  "Limited access. Sides 3-6 available.",
     Duration = 5,
 })
