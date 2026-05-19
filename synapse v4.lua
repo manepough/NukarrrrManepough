@@ -8,7 +8,7 @@ local LocalPlayer = Players.LocalPlayer
 local brick = ReplicatedStorage:WaitForChild("Brick")
 
 local isNuking = false
-local key = "both"
+local key = "both \u{1F91D}"
 local PURE_BLACK = Color3.fromRGB(0, 0, 0)
 
 ------------------------------------------------------------------------
@@ -153,7 +153,7 @@ local TitleLabel = Instance.new("TextLabel", TitleBar)
 TitleLabel.Size = UDim2.new(1, -50, 1, 0)
 TitleLabel.Position = UDim2.new(0, 14, 0, 0)
 TitleLabel.BackgroundTransparency = 1
-TitleLabel.Text = "Synapse"
+TitleLabel.Text = "Synapse v4"
 TitleLabel.TextColor3 = Color3.fromRGB(200, 210, 255)
 TitleLabel.TextSize = 17
 TitleLabel.Font = Enum.Font.GothamBold
@@ -203,7 +203,7 @@ end
 makeDivider(72)
 
 ------------------------------------------------------------------------
--- Picker Popup (shared)
+-- Picker Popup (shared, one at a time)
 ------------------------------------------------------------------------
 local activePickerRow = nil
 
@@ -272,7 +272,6 @@ for i = 1, 6 do
     local locked = (i == 1 or i == 2) and not isWhitelisted
     local rowY = ROW_START_Y + 20 + (i - 1) * (ROW_H + ROW_GAP)
 
-    -- Number label
     local numLabel = Instance.new("TextLabel", MainFrame)
     numLabel.Size = UDim2.new(0, NUM_W, 0, ROW_H)
     numLabel.Position = UDim2.new(0, PAD, 0, rowY)
@@ -285,7 +284,6 @@ for i = 1, 6 do
     numLabel.Font = Enum.Font.GothamBold
     numLabel.TextXAlignment = Enum.TextXAlignment.Left
 
-    -- TextBox
     local box = Instance.new("TextBox", MainFrame)
     box.Size = UDim2.new(0, BOX_W, 0, ROW_H)
     box.Position = UDim2.new(0, PAD + NUM_W + SPACING, 0, rowY)
@@ -326,7 +324,6 @@ for i = 1, 6 do
         end)
     end
 
-    -- Swatch
     local swatch = Instance.new("TextButton", MainFrame)
     swatch.Name = "Swatch" .. i
     swatch.Size = UDim2.new(0, SWATCH_W, 0, SWATCH_W)
@@ -370,7 +367,7 @@ for i = 1, 6 do
 end
 
 ------------------------------------------------------------------------
--- Populate picker colors
+-- Populate picker color buttons
 ------------------------------------------------------------------------
 for _, opt in ipairs(ColorOptions) do
     local cb = Instance.new("TextButton", PopupScroll)
@@ -401,7 +398,7 @@ for _, opt in ipairs(ColorOptions) do
 end
 
 ------------------------------------------------------------------------
--- Close popup on outside click  (FIXED: UserInputService not ScreenGui)
+-- Close popup on outside click
 ------------------------------------------------------------------------
 UserInputService.InputBegan:Connect(function(input, gpe)
     if not PickerPopup.Visible then return end
@@ -451,7 +448,6 @@ local execStroke = Instance.new("UIStroke", ExecuteButton)
 execStroke.Color = Color3.fromRGB(100, 140, 255)
 execStroke.Thickness = 1.5
 
--- Resize frame to fit everything
 local FINAL_H = ROWS_BOTTOM + 10 + 44 + 14
 MainFrame.Size = UDim2.new(0, FRAME_W, 0, FINAL_H)
 MainFrame.Position = UDim2.new(0.5, -FRAME_W / 2, 0.5, -FINAL_H / 2)
@@ -534,7 +530,7 @@ end)
 CloseButton.MouseButton1Click:Connect(closeGUI)
 
 ------------------------------------------------------------------------
--- Nuke Logic (FIXED)
+-- Nuke Logic (restored original proven fire pattern)
 ------------------------------------------------------------------------
 local function applyNuke()
     local Character = LocalPlayer.Character
@@ -542,23 +538,25 @@ local function applyNuke()
 
     local tool = Character:FindFirstChild("Paint") or LocalPlayer.Backpack:FindFirstChild("Paint")
     if not tool then
-        StarterGui:SetCore("SendNotification", {Title = "Synapse", Text = "Paint tool not found.", Duration = 3})
+        StarterGui:SetCore("SendNotification", {
+            Title = "Synapse v4",
+            Text = "Paint tool not found.",
+            Duration = 3,
+        })
         return
     end
 
     isNuking = true
 
-    -- Equip if needed
     if tool.Parent ~= Character then
         Character:WaitForChild("Humanoid"):EquipTool(tool)
-        task.wait(0.6)
+        task.wait(0.5)
     end
 
     local remote = tool:FindFirstChild("Event", true)
         or tool:FindFirstChildWhichIsA("RemoteEvent", true)
     if not remote then
         isNuking = false
-        StarterGui:SetCore("SendNotification", {Title = "Synapse", Text = "RemoteEvent not found.", Duration = 3})
         return
     end
 
@@ -569,19 +567,13 @@ local function applyNuke()
 
     local rootPos = Character.PrimaryPart.Position
 
-    -- Step 1: unanchor the brick so it can be modified
-    remote:FireServer(brick, Enum.NormalId.Top, rootPos, "material", PURE_BLACK, "unanchor", "")
-    task.wait(0.15)
+    -- Step 1: anchor and clean (original working pattern)
+    remote:FireServer(brick, Enum.NormalId.Top, rootPos, "material", PURE_BLACK, "anchor", "")
+    task.wait(0.1)
+    remote:FireServer(brick, Enum.NormalId.Top, rootPos, key, PURE_BLACK, "toxic", "")
+    task.wait(0.6)
 
-    -- Step 2: clear all faces first
-    for _, sideEnum in pairs(SideEnums) do
-        remote:FireServer(brick, sideEnum, rootPos, key, PURE_BLACK, "spray", "")
-        task.wait(0.1)
-    end
-
-    task.wait(0.3)
-
-    -- Step 3: paint each face with its own color and text
+    -- Step 2: paint each side with its own color and text
     for i = 1, 6 do
         local data = rowData[i]
         local sideEnum = SideEnums[i]
@@ -590,17 +582,17 @@ local function applyNuke()
             or ("side " .. i)
 
         remote:FireServer(brick, sideEnum, rootPos, key, data.color, "spray", textToSend)
+        -- material sync keeps text from stacking (original pattern)
+        remote:FireServer(brick, Enum.NormalId.Top, rootPos, "material", PURE_BLACK, "neon", "")
         task.wait(0.45)
-        remote:FireServer(brick, sideEnum, rootPos, "material", data.color, "neon", "")
-        task.wait(0.1)
     end
 
-    -- Step 4: anchor after painting
+    -- Step 3: final anchor
     remote:FireServer(brick, Enum.NormalId.Top, rootPos, "material", PURE_BLACK, "anchor", "")
 
     StarterGui:SetCore("SendNotification", {
-        Title = "Synapse",
-        Text = "All 6 sides painted successfully.",
+        Title = "Synapse v4",
+        Text = "All 6 sides painted.",
         Duration = 3,
     })
 
@@ -637,7 +629,7 @@ LocalPlayer.CharacterAdded:Connect(setupMobile)
 -- Startup
 ------------------------------------------------------------------------
 StarterGui:SetCore("SendNotification", {
-    Title = "Synapse",
+    Title = "Synapse v4",
     Text = isWhitelisted
         and "Full access. All 6 sides unlocked."
         or  "Limited access. Sides 3-6 available.",
