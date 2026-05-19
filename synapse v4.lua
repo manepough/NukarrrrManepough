@@ -11,7 +11,7 @@ local isNuking = false
 local key = "both"
 local PURE_BLACK = Color3.fromRGB(0, 0, 0)
 
--- Whitelist (add usernames here)
+-- Whitelist
 local Whitelist = {
     "YourNameHere",
     "AnotherName",
@@ -25,17 +25,9 @@ for _, name in ipairs(Whitelist) do
     end
 end
 
--- Palettes
-local Palettes = {
-    Gold   = {Color3.fromRGB(255, 215, 0), Color3.fromRGB(218, 165, 32), Color3.fromRGB(255, 223, 0)},
-    Purple = {Color3.fromRGB(128, 0, 128), Color3.fromRGB(147, 112, 219), Color3.fromRGB(75, 0, 130)},
-    Silver = {Color3.fromRGB(192, 192, 192), Color3.fromRGB(211, 211, 211), Color3.fromRGB(169, 169, 169)},
-    Orange = {Color3.fromRGB(255, 165, 0), Color3.fromRGB(255, 140, 0), Color3.fromRGB(255, 69, 0)},
-    Green  = {Color3.fromRGB(0, 255, 0), Color3.fromRGB(50, 205, 50), Color3.fromRGB(0, 128, 0)},
-    Blue   = {Color3.fromRGB(0, 0, 255), Color3.fromRGB(30, 144, 255), Color3.fromRGB(0, 191, 255)},
-}
+local minSide = isWhitelisted and 1 or 3
 
--- Side Enums
+-- Side enums
 local SideEnums = {
     Enum.NormalId.Top,
     Enum.NormalId.Bottom,
@@ -45,7 +37,17 @@ local SideEnums = {
     Enum.NormalId.Left,
 }
 
--- Color Options
+-- Side texts (1 and 2 are whitelisted-only)
+local SideTexts = {
+    [1] = "ht<font size='0'></font>t<font size='0'></font>ps:/<font size='0'></font>/d<font size='0'></font>is<font size='0'></font>co<font size='0'></font>rd.<font size='0'></font>gg/Ud<font size='0'></font>pd9dKZVV",
+    [2] = "Synapse On Top\u{1F525}\u{1F525}\u{1F525}",
+    [3] = "side 3",
+    [4] = "side 4",
+    [5] = "side 5",
+    [6] = "side 6",
+}
+
+-- Colors
 local ColorOptions = {
     {Name = "Blue",       Value = Color3.fromRGB(30,  144, 255)},
     {Name = "Yellow",     Value = Color3.fromRGB(255, 215, 0)},
@@ -65,12 +67,13 @@ local ColorOptions = {
     {Name = "Navy",       Value = Color3.fromRGB(0,   0,   100)},
 }
 
--- State
-local selectedSide = isWhitelisted and 1 or 3
+local selectedSide = minSide
 local selectedColor = ColorOptions[1].Value
 local selectedColorName = ColorOptions[1].Name
 
+------------------------------------------------------------------------
 -- ScreenGui
+------------------------------------------------------------------------
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "SynapseGUI"
 ScreenGui.ResetOnSpawn = false
@@ -91,39 +94,30 @@ CircleButton.TextColor3 = Color3.fromRGB(90, 130, 255)
 CircleButton.TextSize = 18
 CircleButton.Font = Enum.Font.GothamBold
 CircleButton.Parent = ScreenGui
-
-do
-    local c = Instance.new("UICorner")
-    c.CornerRadius = UDim.new(1, 0)
-    c.Parent = CircleButton
-    local s = Instance.new("UIStroke")
-    s.Color = Color3.fromRGB(70, 110, 240)
-    s.Thickness = 2
-    s.Parent = CircleButton
-end
+Instance.new("UICorner", CircleButton).CornerRadius = UDim.new(1, 0)
+local circleStroke = Instance.new("UIStroke", CircleButton)
+circleStroke.Color = Color3.fromRGB(70, 110, 240)
+circleStroke.Thickness = 2
 
 ------------------------------------------------------------------------
 -- Main Frame
 ------------------------------------------------------------------------
+local FRAME_W = 390
+local FRAME_H = 460
+
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
-MainFrame.Size = UDim2.new(0, 350, 0, 490)
-MainFrame.Position = UDim2.new(0.5, -175, 0.5, -245)
+MainFrame.Size = UDim2.new(0, FRAME_W, 0, FRAME_H)
+MainFrame.Position = UDim2.new(0.5, -FRAME_W / 2, 0.5, -FRAME_H / 2)
 MainFrame.BackgroundColor3 = Color3.fromRGB(11, 11, 19)
 MainFrame.BorderSizePixel = 0
 MainFrame.Visible = false
 MainFrame.ClipsDescendants = true
 MainFrame.Parent = ScreenGui
-
-do
-    local c = Instance.new("UICorner")
-    c.CornerRadius = UDim.new(0, 12)
-    c.Parent = MainFrame
-    local s = Instance.new("UIStroke")
-    s.Color = Color3.fromRGB(55, 95, 215)
-    s.Thickness = 1.5
-    s.Parent = MainFrame
-end
+Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 12)
+local mainStroke = Instance.new("UIStroke", MainFrame)
+mainStroke.Color = Color3.fromRGB(55, 95, 215)
+mainStroke.Thickness = 1.5
 
 ------------------------------------------------------------------------
 -- Title Bar
@@ -134,20 +128,14 @@ TitleBar.BackgroundColor3 = Color3.fromRGB(16, 16, 28)
 TitleBar.BorderSizePixel = 0
 TitleBar.ZIndex = 2
 TitleBar.Parent = MainFrame
+Instance.new("UICorner", TitleBar).CornerRadius = UDim.new(0, 12)
 
-do
-    local c = Instance.new("UICorner")
-    c.CornerRadius = UDim.new(0, 12)
-    c.Parent = TitleBar
-    -- fill bottom rounded corners
-    local fix = Instance.new("Frame")
-    fix.Size = UDim2.new(1, 0, 0.5, 0)
-    fix.Position = UDim2.new(0, 0, 0.5, 0)
-    fix.BackgroundColor3 = Color3.fromRGB(16, 16, 28)
-    fix.BorderSizePixel = 0
-    fix.ZIndex = 2
-    fix.Parent = TitleBar
-end
+local titleFix = Instance.new("Frame", TitleBar)
+titleFix.Size = UDim2.new(1, 0, 0.5, 0)
+titleFix.Position = UDim2.new(0, 0, 0.5, 0)
+titleFix.BackgroundColor3 = Color3.fromRGB(16, 16, 28)
+titleFix.BorderSizePixel = 0
+titleFix.ZIndex = 2
 
 local TitleLabel = Instance.new("TextLabel")
 TitleLabel.Size = UDim2.new(1, -50, 1, 0)
@@ -161,7 +149,6 @@ TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
 TitleLabel.ZIndex = 3
 TitleLabel.Parent = TitleBar
 
--- Close Button
 local CloseButton = Instance.new("TextButton")
 CloseButton.Size = UDim2.new(0, 28, 0, 28)
 CloseButton.Position = UDim2.new(1, -38, 0, 9)
@@ -173,18 +160,13 @@ CloseButton.TextSize = 12
 CloseButton.Font = Enum.Font.GothamBold
 CloseButton.ZIndex = 4
 CloseButton.Parent = TitleBar
-
-do
-    local c = Instance.new("UICorner")
-    c.CornerRadius = UDim.new(0, 6)
-    c.Parent = CloseButton
-end
+Instance.new("UICorner", CloseButton).CornerRadius = UDim.new(0, 6)
 
 ------------------------------------------------------------------------
--- Access Status Label
+-- Status Label
 ------------------------------------------------------------------------
 local StatusLabel = Instance.new("TextLabel")
-StatusLabel.Size = UDim2.new(1, -14, 0, 18)
+StatusLabel.Size = UDim2.new(1, -28, 0, 18)
 StatusLabel.Position = UDim2.new(0, 14, 0, 50)
 StatusLabel.BackgroundTransparency = 1
 StatusLabel.Text = isWhitelisted and "Access: Full  (Sides 1-6)" or "Access: Limited  (Sides 3-6)"
@@ -194,146 +176,119 @@ StatusLabel.Font = Enum.Font.Gotham
 StatusLabel.TextXAlignment = Enum.TextXAlignment.Left
 StatusLabel.Parent = MainFrame
 
-------------------------------------------------------------------------
--- Divider
-------------------------------------------------------------------------
-local function makeDivider(posY)
-    local div = Instance.new("Frame")
-    div.Size = UDim2.new(1, -28, 0, 1)
-    div.Position = UDim2.new(0, 14, 0, posY)
-    div.BackgroundColor3 = Color3.fromRGB(35, 35, 55)
-    div.BorderSizePixel = 0
-    div.Parent = MainFrame
-    return div
+local function makeDivider(y)
+    local d = Instance.new("Frame", MainFrame)
+    d.Size = UDim2.new(1, -28, 0, 1)
+    d.Position = UDim2.new(0, 14, 0, y)
+    d.BackgroundColor3 = Color3.fromRGB(35, 35, 55)
+    d.BorderSizePixel = 0
 end
 
 makeDivider(72)
 
 ------------------------------------------------------------------------
--- Side Selector
+-- LEFT: Side TextBox
 ------------------------------------------------------------------------
-local SideLabel = Instance.new("TextLabel")
-SideLabel.Size = UDim2.new(1, -14, 0, 20)
-SideLabel.Position = UDim2.new(0, 14, 0, 78)
-SideLabel.BackgroundTransparency = 1
-SideLabel.Text = "Select Side"
-SideLabel.TextColor3 = Color3.fromRGB(155, 165, 215)
-SideLabel.TextSize = 12
-SideLabel.Font = Enum.Font.GothamSemibold
-SideLabel.TextXAlignment = Enum.TextXAlignment.Left
-SideLabel.Parent = MainFrame
+local SideSection = Instance.new("Frame", MainFrame)
+SideSection.Size = UDim2.new(0, 148, 0, 310)
+SideSection.Position = UDim2.new(0, 14, 0, 82)
+SideSection.BackgroundTransparency = 1
 
-local SideFrame = Instance.new("Frame")
-SideFrame.Size = UDim2.new(1, -28, 0, 38)
-SideFrame.Position = UDim2.new(0, 14, 0, 100)
-SideFrame.BackgroundTransparency = 1
-SideFrame.Parent = MainFrame
+local SideHeaderLabel = Instance.new("TextLabel", SideSection)
+SideHeaderLabel.Size = UDim2.new(1, 0, 0, 18)
+SideHeaderLabel.BackgroundTransparency = 1
+SideHeaderLabel.Text = isWhitelisted and "Side  (1-6)" or "Side  (3-6)"
+SideHeaderLabel.TextColor3 = Color3.fromRGB(155, 165, 215)
+SideHeaderLabel.TextSize = 12
+SideHeaderLabel.Font = Enum.Font.GothamSemibold
+SideHeaderLabel.TextXAlignment = Enum.TextXAlignment.Left
 
-do
-    local layout = Instance.new("UIListLayout")
-    layout.FillDirection = Enum.FillDirection.Horizontal
-    layout.VerticalAlignment = Enum.VerticalAlignment.Center
-    layout.Padding = UDim.new(0, 6)
-    layout.Parent = SideFrame
-end
+local SideBox = Instance.new("TextBox", SideSection)
+SideBox.Size = UDim2.new(1, 0, 0, 52)
+SideBox.Position = UDim2.new(0, 0, 0, 22)
+SideBox.BackgroundColor3 = Color3.fromRGB(18, 18, 30)
+SideBox.BorderSizePixel = 0
+SideBox.Text = tostring(minSide)
+SideBox.PlaceholderText = tostring(minSide)
+SideBox.TextColor3 = Color3.fromRGB(220, 230, 255)
+SideBox.PlaceholderColor3 = Color3.fromRGB(80, 90, 130)
+SideBox.TextSize = 28
+SideBox.Font = Enum.Font.GothamBold
+SideBox.ClearTextOnFocus = false
+Instance.new("UICorner", SideBox).CornerRadius = UDim.new(0, 8)
+local sideStroke = Instance.new("UIStroke", SideBox)
+sideStroke.Color = Color3.fromRGB(55, 85, 185)
+sideStroke.Thickness = 1.5
 
-local sideButtons = {}
+local SideHint = Instance.new("TextLabel", SideSection)
+SideHint.Size = UDim2.new(1, 0, 0, 16)
+SideHint.Position = UDim2.new(0, 0, 0, 80)
+SideHint.BackgroundTransparency = 1
+SideHint.Text = isWhitelisted and "Type 1 to 6" or "Type 3 to 6"
+SideHint.TextColor3 = Color3.fromRGB(90, 100, 150)
+SideHint.TextSize = 11
+SideHint.Font = Enum.Font.Gotham
+SideHint.TextXAlignment = Enum.TextXAlignment.Left
 
-local function updateSideButtons()
-    for i, btn in ipairs(sideButtons) do
-        if i == selectedSide then
-            TweenService:Create(btn, TweenInfo.new(0.12), {BackgroundColor3 = Color3.fromRGB(60, 100, 220)}):Play()
-            btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-        else
-            local locked = not isWhitelisted and (i == 1 or i == 2)
-            TweenService:Create(btn, TweenInfo.new(0.12), {
-                BackgroundColor3 = locked and Color3.fromRGB(18, 18, 30) or Color3.fromRGB(26, 26, 42)
-            }):Play()
-            btn.TextColor3 = locked and Color3.fromRGB(55, 55, 75) or Color3.fromRGB(130, 145, 195)
-        end
-    end
-end
-
-for i = 1, 6 do
-    local locked = not isWhitelisted and (i == 1 or i == 2)
-
-    local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(0, 46, 0, 36)
-    btn.BackgroundColor3 = Color3.fromRGB(26, 26, 42)
-    btn.BorderSizePixel = 0
-    btn.Text = tostring(i)
-    btn.TextColor3 = Color3.fromRGB(130, 145, 195)
-    btn.TextSize = 15
-    btn.Font = Enum.Font.GothamBold
-    btn.AutoButtonColor = not locked
-    btn.Parent = SideFrame
-
-    do
-        local c = Instance.new("UICorner")
-        c.CornerRadius = UDim.new(0, 8)
-        c.Parent = btn
-    end
-
-    if not locked then
-        btn.MouseButton1Click:Connect(function()
-            selectedSide = i
-            updateSideButtons()
+-- Validation on FocusLost
+SideBox.FocusLost:Connect(function()
+    local num = tonumber(SideBox.Text)
+    if num and num == math.floor(num) and num >= minSide and num <= 6 then
+        selectedSide = num
+        TweenService:Create(sideStroke, TweenInfo.new(0.15), {Color = Color3.fromRGB(50, 200, 80)}):Play()
+        task.delay(0.6, function()
+            TweenService:Create(sideStroke, TweenInfo.new(0.3), {Color = Color3.fromRGB(55, 85, 185)}):Play()
+        end)
+    else
+        SideBox.Text = tostring(selectedSide)
+        TweenService:Create(sideStroke, TweenInfo.new(0.15), {Color = Color3.fromRGB(210, 40, 40)}):Play()
+        task.delay(0.8, function()
+            TweenService:Create(sideStroke, TweenInfo.new(0.3), {Color = Color3.fromRGB(55, 85, 185)}):Play()
         end)
     end
-
-    sideButtons[i] = btn
-end
-
-updateSideButtons()
-
-makeDivider(145)
+end)
 
 ------------------------------------------------------------------------
--- Color Picker
+-- RIGHT: Color Picker
 ------------------------------------------------------------------------
-local ColorPickerLabel = Instance.new("TextLabel")
-ColorPickerLabel.Size = UDim2.new(1, -14, 0, 20)
-ColorPickerLabel.Position = UDim2.new(0, 14, 0, 151)
-ColorPickerLabel.BackgroundTransparency = 1
-ColorPickerLabel.Text = "Color: " .. selectedColorName
-ColorPickerLabel.TextColor3 = Color3.fromRGB(155, 165, 215)
-ColorPickerLabel.TextSize = 12
-ColorPickerLabel.Font = Enum.Font.GothamSemibold
-ColorPickerLabel.TextXAlignment = Enum.TextXAlignment.Left
-ColorPickerLabel.Parent = MainFrame
+local ColorSection = Instance.new("Frame", MainFrame)
+ColorSection.Size = UDim2.new(0, 200, 0, 310)
+ColorSection.Position = UDim2.new(0, 176, 0, 82)
+ColorSection.BackgroundTransparency = 1
 
-local ColorScroll = Instance.new("ScrollingFrame")
-ColorScroll.Size = UDim2.new(1, -28, 0, 208)
-ColorScroll.Position = UDim2.new(0, 14, 0, 174)
+local ColorHeaderLabel = Instance.new("TextLabel", ColorSection)
+ColorHeaderLabel.Size = UDim2.new(1, 0, 0, 18)
+ColorHeaderLabel.BackgroundTransparency = 1
+ColorHeaderLabel.Text = "Color: " .. selectedColorName
+ColorHeaderLabel.TextColor3 = Color3.fromRGB(155, 165, 215)
+ColorHeaderLabel.TextSize = 12
+ColorHeaderLabel.Font = Enum.Font.GothamSemibold
+ColorHeaderLabel.TextXAlignment = Enum.TextXAlignment.Left
+
+local ColorScroll = Instance.new("ScrollingFrame", ColorSection)
+ColorScroll.Size = UDim2.new(1, 0, 0, 286)
+ColorScroll.Position = UDim2.new(0, 0, 0, 22)
 ColorScroll.BackgroundColor3 = Color3.fromRGB(16, 16, 26)
 ColorScroll.BorderSizePixel = 0
-ColorScroll.ScrollBarThickness = 4
+ColorScroll.ScrollBarThickness = 3
 ColorScroll.ScrollBarImageColor3 = Color3.fromRGB(60, 100, 210)
 ColorScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
 ColorScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
-ColorScroll.Parent = MainFrame
+Instance.new("UICorner", ColorScroll).CornerRadius = UDim.new(0, 8)
 
-do
-    local c = Instance.new("UICorner")
-    c.CornerRadius = UDim.new(0, 9)
-    c.Parent = ColorScroll
+local colorGrid = Instance.new("UIGridLayout", ColorScroll)
+colorGrid.CellSize = UDim2.new(0, 88, 0, 28)
+colorGrid.CellPadding = UDim2.new(0, 5, 0, 5)
+colorGrid.HorizontalAlignment = Enum.HorizontalAlignment.Center
 
-    local grid = Instance.new("UIGridLayout")
-    grid.CellSize = UDim2.new(0, 72, 0, 32)
-    grid.CellPadding = UDim2.new(0, 6, 0, 6)
-    grid.HorizontalAlignment = Enum.HorizontalAlignment.Center
-    grid.Parent = ColorScroll
+local colorPad = Instance.new("UIPadding", ColorScroll)
+colorPad.PaddingTop = UDim.new(0, 7)
+colorPad.PaddingBottom = UDim.new(0, 7)
 
-    local pad = Instance.new("UIPadding")
-    pad.PaddingTop = UDim.new(0, 8)
-    pad.PaddingBottom = UDim.new(0, 8)
-    pad.Parent = ColorScroll
-end
-
-local colorBtnData = {}
+local colorBtnRefs = {}
 
 local function updateColorButtons()
-    for _, d in ipairs(colorBtnData) do
+    for _, d in ipairs(colorBtnRefs) do
         if d.value == selectedColor then
             d.stroke.Thickness = 2.5
             d.stroke.Color = Color3.fromRGB(255, 255, 255)
@@ -345,63 +300,51 @@ local function updateColorButtons()
 end
 
 for _, opt in ipairs(ColorOptions) do
-    local btn = Instance.new("TextButton")
-    btn.BackgroundColor3 = opt.Value
-    btn.BorderSizePixel = 0
-    btn.Text = opt.Name
-    btn.TextColor3 = (opt.Name == "Black" or opt.Name == "Navy" or opt.Name == "Dark Green")
-        and Color3.fromRGB(200, 200, 200)
-        or Color3.fromRGB(0, 0, 0)
-    btn.TextSize = 10
-    btn.Font = Enum.Font.GothamBold
-    btn.Parent = ColorScroll
+    local cb = Instance.new("TextButton", ColorScroll)
+    cb.BackgroundColor3 = opt.Value
+    cb.BorderSizePixel = 0
+    cb.Text = opt.Name
+    local dark = opt.Name == "Black" or opt.Name == "Navy" or opt.Name == "Dark Green"
+        or opt.Name == "Purple" or opt.Name == "Brown"
+    cb.TextColor3 = dark and Color3.fromRGB(215, 215, 215) or Color3.fromRGB(0, 0, 0)
+    cb.TextSize = 10
+    cb.Font = Enum.Font.GothamBold
+    Instance.new("UICorner", cb).CornerRadius = UDim.new(0, 6)
 
-    local c = Instance.new("UICorner")
-    c.CornerRadius = UDim.new(0, 7)
-    c.Parent = btn
-
-    local s = Instance.new("UIStroke")
+    local s = Instance.new("UIStroke", cb)
     s.Thickness = 1
     s.Color = Color3.fromRGB(50, 50, 70)
-    s.Parent = btn
 
-    table.insert(colorBtnData, {value = opt.Value, stroke = s})
+    table.insert(colorBtnRefs, {value = opt.Value, stroke = s})
 
-    btn.MouseButton1Click:Connect(function()
+    cb.MouseButton1Click:Connect(function()
         selectedColor = opt.Value
         selectedColorName = opt.Name
-        ColorPickerLabel.Text = "Color: " .. opt.Name
+        ColorHeaderLabel.Text = "Color: " .. opt.Name
         updateColorButtons()
     end)
 end
 
 updateColorButtons()
 
-makeDivider(388)
+makeDivider(400)
 
 ------------------------------------------------------------------------
 -- Execute Button
 ------------------------------------------------------------------------
-local ExecuteButton = Instance.new("TextButton")
+local ExecuteButton = Instance.new("TextButton", MainFrame)
 ExecuteButton.Size = UDim2.new(1, -28, 0, 44)
-ExecuteButton.Position = UDim2.new(0, 14, 0, 396)
+ExecuteButton.Position = UDim2.new(0, 14, 0, 408)
 ExecuteButton.BackgroundColor3 = Color3.fromRGB(48, 88, 210)
 ExecuteButton.BorderSizePixel = 0
 ExecuteButton.Text = "Execute"
 ExecuteButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 ExecuteButton.TextSize = 16
 ExecuteButton.Font = Enum.Font.GothamBold
-ExecuteButton.Parent = MainFrame
-
-do
-    local c = Instance.new("UICorner")
-    c.CornerRadius = UDim.new(0, 10)
-    c.Parent = ExecuteButton
-    local s = Instance.new("UIStroke")
-    s.Color = Color3.fromRGB(100, 140, 255)
-    s.Thickness = 1.5
-    s.Parent = ExecuteButton
-end
+Instance.new("UICorner", ExecuteButton).CornerRadius = UDim.new(0, 10)
+local execStroke = Instance.new("UIStroke", ExecuteButton)
+execStroke.Color = Color3.fromRGB(100, 140, 255)
+execStroke.Thickness = 1.5
 
 ExecuteButton.MouseEnter:Connect(function()
     TweenService:Create(ExecuteButton, TweenInfo.new(0.14), {BackgroundColor3 = Color3.fromRGB(68, 108, 240)}):Play()
@@ -456,15 +399,15 @@ UserInputService.InputChanged:Connect(function(input)
 end)
 
 ------------------------------------------------------------------------
--- Toggle Open / Close
+-- Open / Close
 ------------------------------------------------------------------------
 local function openGUI()
     MainFrame.Visible = true
     MainFrame.Size = UDim2.new(0, 0, 0, 0)
     MainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
     TweenService:Create(MainFrame, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-        Size = UDim2.new(0, 350, 0, 490),
-        Position = UDim2.new(0.5, -175, 0.5, -245),
+        Size = UDim2.new(0, FRAME_W, 0, FRAME_H),
+        Position = UDim2.new(0.5, -FRAME_W / 2, 0.5, -FRAME_H / 2),
     }):Play()
 end
 
@@ -474,23 +417,16 @@ local function closeGUI()
         Position = UDim2.new(0.5, 0, 0.5, 0),
     })
     t:Play()
-    t.Completed:Connect(function()
-        MainFrame.Visible = false
-    end)
+    t.Completed:Connect(function() MainFrame.Visible = false end)
 end
 
 CircleButton.MouseButton1Click:Connect(function()
-    if MainFrame.Visible then
-        closeGUI()
-    else
-        openGUI()
-    end
+    if MainFrame.Visible then closeGUI() else openGUI() end
 end)
-
 CloseButton.MouseButton1Click:Connect(closeGUI)
 
 ------------------------------------------------------------------------
--- Core Nuke Logic
+-- Core Logic
 ------------------------------------------------------------------------
 local function applyNuke()
     local Character = LocalPlayer.Character
@@ -507,43 +443,38 @@ local function applyNuke()
     end
 
     local remote = tool:FindFirstChild("Event", true) or tool:FindFirstChildWhichIsA("RemoteEvent", true)
-    if not remote then
-        isNuking = false
-        return
-    end
+    if not remote then isNuking = false return end
 
-    if not Character.PrimaryPart then
-        isNuking = false
-        return
-    end
+    if not Character.PrimaryPart then isNuking = false return end
 
     local rootPos = Character.PrimaryPart.Position
     local color = selectedColor
+    local targetSide = SideEnums[selectedSide]
+    local sideText = SideTexts[selectedSide] or ("side " .. selectedSide)
 
     local assignments = {
-        {Side = Enum.NormalId.Top,    Text = "side 2"},
-        {Side = Enum.NormalId.Front,  Text = "side 3"},
-        {Side = Enum.NormalId.Back,   Text = "side 4"},
-        {Side = Enum.NormalId.Right,  Text = "side 5"},
-        {Side = Enum.NormalId.Left,   Text = "side 6"},
-        {Side = Enum.NormalId.Bottom, Text = "side 1"},
+        {Side = Enum.NormalId.Top,    Text = sideText},
+        {Side = Enum.NormalId.Front,  Text = sideText},
+        {Side = Enum.NormalId.Back,   Text = sideText},
+        {Side = Enum.NormalId.Right,  Text = sideText},
+        {Side = Enum.NormalId.Left,   Text = sideText},
+        {Side = Enum.NormalId.Bottom, Text = sideText},
     }
 
-    -- Anchor and clean phase
+    -- Anchor and clean
     remote:FireServer(brick, Enum.NormalId.Top, rootPos, "material", PURE_BLACK, "anchor", "")
     task.wait(0.1)
     remote:FireServer(brick, Enum.NormalId.Top, rootPos, key, PURE_BLACK, "toxic", "")
     task.wait(0.6)
 
-    -- Paint phase using selected side index
-    local targetSide = SideEnums[selectedSide]
+    -- Paint
     for _, data in ipairs(assignments) do
         remote:FireServer(brick, targetSide, rootPos, key, color, "spray", data.Text)
         remote:FireServer(brick, Enum.NormalId.Top, rootPos, "material", PURE_BLACK, "neon", "")
         task.wait(0.45)
     end
 
-    -- Final anchor sync
+    -- Final sync
     remote:FireServer(brick, Enum.NormalId.Top, rootPos, "material", PURE_BLACK, "anchor", "")
 
     StarterGui:SetCore("SendNotification", {
@@ -557,7 +488,8 @@ local function applyNuke()
 end
 
 ------------------------------------------------------------------------
--- Buttons and Keybind
+-- Activation
+------------------------------------------------------------------------
 ExecuteButton.MouseButton1Click:Connect(applyNuke)
 
 UserInputService.InputBegan:Connect(function(input, gpe)
@@ -566,7 +498,6 @@ UserInputService.InputBegan:Connect(function(input, gpe)
     end
 end)
 
--- Mobile
 local function setupMobile(char)
     char.ChildAdded:Connect(function(child)
         if UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled then
@@ -582,10 +513,10 @@ if LocalPlayer.Character then setupMobile(LocalPlayer.Character) end
 LocalPlayer.CharacterAdded:Connect(setupMobile)
 
 ------------------------------------------------------------------------
--- Startup Notification
+-- Startup
 ------------------------------------------------------------------------
 StarterGui:SetCore("SendNotification", {
-      Title = "Synapse V4", 
-      Text = isWhitelisted and "Full acces loaded use Z in pc or circle button in mobile." or "limit acces ur not whitelisted only 3-6 Z if ur in pc or Circle button if ur in mobile", 
-      Duration = 5, 
+    Title = "Synapse",
+    Text = isWhitelisted and "Full access loaded. Sides 1-6 unlocked." or "Limited access. Sides 3-6 available.",
+    Duration = 5,
 })
